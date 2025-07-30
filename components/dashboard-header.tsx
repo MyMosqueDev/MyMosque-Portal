@@ -1,0 +1,105 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Bell, Settings, LogOut, User } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+
+export function DashboardHeader() {
+  const router = useRouter()
+
+  const handleLogout = () => {
+    // In a real app, you'd clear auth tokens here
+    router.push("/")
+  }
+
+  return (
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/dashboard" className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-lg overflow-hidden">
+              <img src="/images/logo.png" alt="MyMosque Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">MyMosque</span>
+          </Link>
+
+          {/* Navigation */}
+          <nav className="hidden md:flex items-center space-x-6">
+            <Link href="/dashboard" className="text-gray-700 hover:text-mosque-blue font-medium">
+              Dashboard
+            </Link>
+            <Link href="/dashboard/announcements" className="text-gray-700 hover:text-mosque-blue font-medium">
+              Announcements
+            </Link>
+            <Link href="/dashboard/events" className="text-gray-700 hover:text-mosque-blue font-medium">
+              Events
+            </Link>
+            <Link href="/dashboard/prayer-times" className="text-gray-700 hover:text-mosque-blue font-medium">
+              Prayer Times
+            </Link>
+          </nav>
+
+          {/* Right side actions */}
+          <div className="flex items-center space-x-4">
+            {/* Notifications */}
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                3
+              </span>
+            </Button>
+
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Mosque Admin" />
+                    <AvatarFallback>NM</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">Nueces Mosque</p>
+                    <p className="text-xs leading-none text-muted-foreground">admin@nuecesmosque.org</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+    </header>
+  )
+}
