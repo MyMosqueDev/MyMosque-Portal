@@ -1,11 +1,30 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Bell, Calendar, Clock, MapPin, Users, TrendingUp, Eye } from "lucide-react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { useEffect, useState } from "react"
+import { User } from "@/lib/types"
 
 export default function DashboardPage() {
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('authenticatedUser')
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr)
+          setUser(user)
+          console.log('User ID:', user.id)
+        } catch (error) {
+          console.error('Error parsing user data:', error)
+        }
+      }
+  }, [])
+
   const stats = [
     {
       title: "Total Followers",
@@ -74,6 +93,11 @@ export default function DashboardPage() {
       location: "Community Center",
     },
   ]
+
+  // TODO: add better error handling
+  if (!user) {
+    return <div>Something went wrong. Please try again.</div>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

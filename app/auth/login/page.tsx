@@ -2,6 +2,7 @@
 
 import type React from "react"
 
+import { login } from './actions'
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,20 +12,28 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  // TODO: Remove this once out of dev
+  const [email, setEmail] = useState("ali.vayani2006@gmail.com")
+  const [password, setPassword] = useState("nuececmosque")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
-    // Dummy auth - always succeeds after 1 second
-    setTimeout(() => {
-      setIsLoading(false)
-      router.push("/dashboard")
-    }, 1000)
+          const result = await login({ email, password })
+      if (result.error) {
+        console.error(result.error)
+        setError("Invalid email or password. Please try again.")
+              } else if (result.user) {
+          const user = result.user
+          localStorage.setItem('authenticatedUser', JSON.stringify(user))
+          router.push('/dashboard')
+        }
+    setIsLoading(false)
   }
 
   return (
@@ -71,6 +80,12 @@ export default function LoginPage() {
                   required
                 />
               </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
 
               <Button type="submit" className="w-full bg-mosque-green hover:bg-mosque-green-light" disabled={isLoading}>
                 {isLoading ? "Signing In..." : "Sign In"}
