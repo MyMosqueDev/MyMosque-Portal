@@ -3,52 +3,48 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Calendar, Clock, MapPin, Users, TrendingUp, Eye } from "lucide-react"
+import { Bell, Calendar, Clock, MapPin, Star, TrendingUp, Eye, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { useEffect, useState } from "react"
-import { User } from "@/lib/types"
+import { MosqueData, User } from "@/lib/types"
+import { useMosque } from "@/hooks/useMosque"
+import { format } from "date-fns"
+import { useRouter } from "next/navigation"
+import useUser from "@/hooks/useUser"
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
+  const [mosque, setMosque] = useState<MosqueData | null>(null)
+  const router = useRouter()
 
-  useEffect(() => {
-    const userStr = localStorage.getItem('authenticatedUser')
-      if (userStr) {
-        try {
-          const user = JSON.parse(userStr)
-          setUser(user)
-          console.log('User ID:', user.id)
-        } catch (error) {
-          console.error('Error parsing user data:', error)
-        }
-      }
-  }, [])
+  useUser({setUser})
+  useMosque({mosqueId: user?.id || 0, setMosque: setMosque})
+  
+  if(!mosque || !mosque.announcements || !mosque.events || !mosque.prayerTimes || !mosque.info) {
+    return <div>Loading...</div>
+  }
 
   const stats = [
     {
-      title: "Total Followers",
-      value: "1,247",
-      change: "+12%",
-      icon: <Users className="h-4 w-4" />,
+      title: "Total Stars",
+      value: mosque.info.stars,
+      icon: <Star className="h-4 w-4 text-yellow-500" />,
     },
     {
-      title: "Active Announcements",
-      value: "8",
-      change: "+2",
-      icon: <Bell className="h-4 w-4" />,
+      title: "Announcements Pushed",
+      value: mosque.announcements.length,
+      icon: <Bell className="h-4 w-4 text-mosque-green" />,
     },
     {
-      title: "Upcoming Events",
-      value: "5",
-      change: "+1",
-      icon: <Calendar className="h-4 w-4" />,
+      title: "Events Created",
+      value: mosque.events.length,
+      icon: <Calendar className="h-4 w-4 text-mosque-blue" />,
     },
     {
-      title: "This Month Views",
-      value: "3,421",
-      change: "+18%",
-      icon: <Eye className="h-4 w-4" />,
+      title: "Total Donations",
+      value: "Coming Soon...",
+      icon: <DollarSign className="h-4 w-4 text-mosque-purple" />,
     },
   ]
 
@@ -56,20 +52,17 @@ export default function DashboardPage() {
     {
       title: "New Jummah Timing",
       date: "May 8, 2025",
-      priority: "high",
-      views: 234,
+      priority: "low", 
     },
     {
       title: "Donation Drive",
       date: "May 4, 2025",
       priority: "medium",
-      views: 156,
     },
     {
       title: "Ramadan Schedule",
       date: "April 28, 2025",
       priority: "high",
-      views: 445,
     },
   ]
 
@@ -120,10 +113,12 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                {/* 
+                TODO: Add change in stats
                 <div className="flex items-center text-sm text-mosque-green">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   {stat.change} from last month
-                </div>
+                </div> */}
               </CardContent>
             </Card>
           ))}
@@ -175,31 +170,33 @@ export default function DashboardPage() {
                   <CardTitle>Recent Announcements</CardTitle>
                   <CardDescription>Your latest community updates</CardDescription>
                 </div>
-                <Link href="/dashboard/announcements">
-                  <Button variant="outline" size="sm">
-                    View All
-                  </Button>
-                </Link>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    // Store data in sessionStorage for the next page
+                    sessionStorage.setItem('announcementsData', JSON.stringify(mosque.announcements))
+                    router.push('/dashboard/announcements')
+                  }}
+                >
+                  View All
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentAnnouncements.map((announcement, index) => (
+                  {mosque.announcements.map((announcement, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
+                        <div className="flex items-center space-x-2 mb-1 justify-between">
                           <h4 className="font-medium text-gray-900">{announcement.title}</h4>
                           <Badge
-                            variant={announcement.priority === "high" ? "destructive" : "secondary"}
+                            variant={announcement.severity.toLowerCase() as "high" | "medium" | "low"}
                             className="text-xs"
                           >
-                            {announcement.priority}
+                            {announcement.severity.toLowerCase()}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600">{announcement.date}</p>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Eye className="h-3 w-3 mr-1" />
-                        {announcement.views}
+                        <p className="text-sm text-gray-600">{format(new Date(announcement.created_at), 'MMMM d, yyyy')}</p>
                       </div>
                     </div>
                   ))}

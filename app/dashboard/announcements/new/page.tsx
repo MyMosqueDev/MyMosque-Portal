@@ -14,8 +14,12 @@ import { ArrowLeft, Save, Send } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { supabase } from "@/utils/supabase/client"
+import useUser from "@/hooks/useUser"
+import { User } from "@/lib/types"
 
 export default function NewAnnouncementPage() {
+  const [user, setUser] = useState<User | null>(null)
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -27,16 +31,44 @@ export default function NewAnnouncementPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  useUser({setUser})
 
   const handleSubmit = async (e: React.FormEvent, action: "draft" | "publish") => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    const { data, error: pushedError }  = await supabase
+    .from('announcements')
+    .insert({
+      masjid_id: user?.id,
+      title: formData.title,
+      description: formData.content,
+      severity: formData.priority,
+      status: action === "publish" ? "published" : "draft",
+    })
+    .select()
+    .single()
+
+    if (pushedError) {
+      console.error('Error creating announcement:', pushedError)
+    } else {
+      const announcementsData = sessionStorage.getItem('announcementsData') ? JSON.parse(sessionStorage.getItem('announcementsData') as string) : []
+      announcementsData.push(data)
+      sessionStorage.setItem('announcementsData', JSON.stringify(announcementsData))
+
+      const {error: updatedError} = await supabase
+      .from('mosques')
+      .update({
+        last_announcement: new Date()
+      })
+      .eq('id', user?.id)
+
+      if (updatedError) {
+        console.error('Error updating mosque:', updatedError)
+    }
       setIsLoading(false)
       router.push("/dashboard/announcements")
-    }, 1000)
+    }
   }
 
   const handleInputChange = (field: string, value: string | boolean) => {
