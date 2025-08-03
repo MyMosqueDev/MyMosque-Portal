@@ -141,7 +141,7 @@ export default function LandingPage() {
             <div className="md:col-span-2 relative">
               <div className="relative rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-all duration-500">
                 <Image
-                  src="/images/nueces.jpg"
+                  src="https://ywxigrpuhgfbqwrmjovz.supabase.co/storage/v1/object/public/images//nueces.jpg"
                   alt="Nueces Mosque Image"
                   width={1200}
                   height={600}

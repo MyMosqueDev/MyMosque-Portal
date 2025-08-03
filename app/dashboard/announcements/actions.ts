@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { Announcement } from '@/lib/types'
+import { sanitizeInput } from '@/lib/utils'
 
 // Create server-side Supabase client
 async function createClient() {
@@ -52,14 +53,6 @@ function validateAnnouncement(data: { title: string; content: string; priority: 
     }
     
     return errors
-}
-
-// Sanitize input to prevent XSS
-function sanitizeInput(input: string): string {
-    return input
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .trim()
 }
 
 export async function getAnnouncements() {

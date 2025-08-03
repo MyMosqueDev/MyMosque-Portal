@@ -45,7 +45,7 @@ export default function NewAnnouncementPage() {
       status: action === "publish" ? "published" : "draft",
       created_at: new Date().toISOString(),
     }
-    const { data, error } = await newAnnouncement(announcement)
+    const { error } = await newAnnouncement(announcement)
     if (error) {
       console.error('Error creating announcement:', error)
     } else {
@@ -143,59 +143,6 @@ export default function NewAnnouncementPage() {
 
           {/* Settings Sidebar */}
           <div className="space-y-6">
-            {/* Publishing Options */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Publishing Options</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Send Push Notification</Label>
-                    <p className="text-sm text-gray-500">Notify followers immediately</p>
-                  </div>
-                  <Switch
-                    checked={formData.sendNotification}
-                    onCheckedChange={(checked) => handleInputChange("sendNotification", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Schedule Publishing</Label>
-                    <p className="text-sm text-gray-500">Publish at a specific time</p>
-                  </div>
-                  <Switch
-                    checked={formData.schedulePublish}
-                    onCheckedChange={(checked) => handleInputChange("schedulePublish", checked)}
-                  />
-                </div>
-
-                {formData.schedulePublish && (
-                  <div className="space-y-3 pt-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="publishDate">Publish Date</Label>
-                      <Input
-                        id="publishDate"
-                        type="date"
-                        value={formData.publishDate}
-                        onChange={(e) => handleInputChange("publishDate", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="publishTime">Publish Time</Label>
-                      <Input
-                        id="publishTime"
-                        type="time"
-                        value={formData.publishTime}
-                        onChange={(e) => handleInputChange("publishTime", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {/* Preview */}
             <Card>
               <CardHeader>

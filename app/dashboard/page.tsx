@@ -22,7 +22,19 @@ export default function DashboardPage() {
   useMosque({mosqueId: user?.id || 0, setMosque: setMosque})
   
   if(!mosque || !mosque.announcements || !mosque.events || !mosque.prayerTimes || !mosque.info) {
-    return <div>Loading...</div>
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mosque-green mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading mosque data...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   const stats = [
@@ -184,7 +196,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mosque.announcements.map((announcement, index) => (
+                  {mosque.announcements
+                    .filter(announcement => announcement.status === "published")
+                    .slice(0, 3)
+                    .map((announcement, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1 justify-between">

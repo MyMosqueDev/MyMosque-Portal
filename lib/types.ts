@@ -44,6 +44,17 @@ export type Event = {
     image: string;
     mosqueName?: string;
     displayDate?: string;
+    status: "published" | "draft" | "deleted" | null;
+}
+
+export type EventFormData = {
+    title: string;
+    description: string;
+    date: string;
+    host?: string;
+    location: string;
+    image: File | null;
+    status: "published" | "draft" | "deleted" | null;
 }
 
 export type PrayerTime = {
