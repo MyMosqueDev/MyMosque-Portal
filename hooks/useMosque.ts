@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { MosqueData } from "@/lib/types"
 import { supabase } from "@/utils/supabase/client"
 
-export const useMosque = ({mosqueId, setMosque}: {mosqueId: number, setMosque: (mosque: MosqueData) => void}) => {
+export const useMosque = ({mosqueId, setMosque}: {mosqueId: string | number, setMosque: (mosque: MosqueData) => void}) => {
     useEffect(() => {
         const fetchMosque = async () => {
             if (mosqueId) {

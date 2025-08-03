@@ -16,7 +16,8 @@ import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { supabase } from "@/utils/supabase/client"
 import useUser from "@/hooks/useUser"
-import { User } from "@/lib/types"
+import { Announcement, User } from "@/lib/types"
+import { newAnnouncement } from "../actions"
 
 export default function NewAnnouncementPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -36,38 +37,20 @@ export default function NewAnnouncementPage() {
   const handleSubmit = async (e: React.FormEvent, action: "draft" | "publish") => {
     e.preventDefault()
     setIsLoading(true)
-
-    const { data, error: pushedError }  = await supabase
-    .from('announcements')
-    .insert({
-      masjid_id: user?.id,
+    
+    const announcement: Announcement = {
       title: formData.title,
       description: formData.content,
-      severity: formData.priority,
+      severity: formData.priority as "low" | "medium" | "high",
       status: action === "publish" ? "published" : "draft",
-    })
-    .select()
-    .single()
-
-    if (pushedError) {
-      console.error('Error creating announcement:', pushedError)
-    } else {
-      const announcementsData = sessionStorage.getItem('announcementsData') ? JSON.parse(sessionStorage.getItem('announcementsData') as string) : []
-      announcementsData.push(data)
-      sessionStorage.setItem('announcementsData', JSON.stringify(announcementsData))
-
-      const {error: updatedError} = await supabase
-      .from('mosques')
-      .update({
-        last_announcement: new Date()
-      })
-      .eq('id', user?.id)
-
-      if (updatedError) {
-        console.error('Error updating mosque:', updatedError)
+      created_at: new Date().toISOString(),
     }
-      setIsLoading(false)
-      router.push("/dashboard/announcements")
+    const { data, error } = await newAnnouncement(announcement)
+    if (error) {
+      console.error('Error creating announcement:', error)
+    } else {
+
+      router.push('/dashboard/announcements')
     }
   }
 
@@ -96,6 +79,17 @@ export default function NewAnnouncementPage() {
             <p className="text-gray-600">Create a new announcement for your community</p>
           </div>
         </div>
+
+        {isLoading && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-8 shadow-xl">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mosque-green mx-auto mb-4"></div>
+                <p className="text-gray-600">Creating announcement...</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Form */}

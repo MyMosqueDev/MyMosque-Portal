@@ -1,5 +1,5 @@
 export type User = {
-    id: number
+    id: string | number
     email: string
 }
 
@@ -60,12 +60,13 @@ export type PrayerTime = {
 }
 
 export type Announcement = {
-    id: string;
-    created_at: string;
+    id?: string;
+    created_at: string ;
     title: string;
     description: string;
-    date: string;
+    date?: string;
     severity: "low" | "medium" | "high";
     status: "published" | "draft" | "deleted" | null;
-    updated_at: string;
+    updated_at?: string;
+    masjid_id?: string;
 }

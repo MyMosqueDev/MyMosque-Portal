@@ -6,21 +6,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Bell, Plus, Search, Eye, Edit, Trash2, Filter, Save, Send } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Bell, Plus, Edit, Trash2, Save } from "lucide-react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { useEffect, useState } from "react"
 import { Announcement } from "@/lib/types"
 import { format } from "date-fns"
-import { supabase } from "@/utils/supabase/client"
 import useUser from "@/hooks/useUser"
 import { User } from "@/lib/types"
+import { toast } from "sonner"
+import { getAnnouncements, updateAnnouncement, deleteAnnouncement } from "./actions"
 
 export default function AnnouncementsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -31,13 +32,32 @@ export default function AnnouncementsPage() {
     priority: "medium",
   })
   const [isEditLoading, setIsEditLoading] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
   
   useUser({setUser})
 
+  // Fetch announcements from server
+  const fetchAnnouncements = async () => {
+    try {
+      setIsLoading(true)
+      
+      const { data, error } = await getAnnouncements()
+      if (error) {
+        toast.error(error)
+        return
+      }
+
+      setAnnouncements(data)
+    } catch (error) {
+      console.error('Error fetching announcements:', error)
+      toast.error("Failed to load announcements")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const announcementsData = sessionStorage.getItem('announcementsData') ? JSON.parse(sessionStorage.getItem('announcementsData') as string) : []
-    console.log(announcementsData)
-    setAnnouncements(announcementsData)
+    fetchAnnouncements()
   }, [])
 
   const getPriorityColor = (priority: string) => {
@@ -65,18 +85,20 @@ export default function AnnouncementsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    const updatedAnnouncements = announcements.filter((announcement) => announcement.id !== id)
-    setAnnouncements(updatedAnnouncements)
-    sessionStorage.setItem('announcementsData', JSON.stringify(updatedAnnouncements))
-    const {error: deletedError} = await supabase
-      .from('announcements')
-      .update({
-        status: 'deleted'
-      })
-      .eq('id', id)
+    try {
+      const { error } = await deleteAnnouncement(id)
+      
+      if (error) {
+        toast.error(error)
+        return
+      }
 
-    if (deletedError) {
-      console.error('Error deleting announcement:', deletedError)
+      // Update local state
+      setAnnouncements(prev => prev.filter(a => a.id !== id))
+      toast.success("Announcement deleted successfully")
+    } catch (error) {
+      console.error('Error deleting announcement:', error)
+      toast.error("Failed to delete announcement")
     }
   }
 
@@ -86,7 +108,7 @@ export default function AnnouncementsPage() {
   }
 
   const confirmDelete = () => {
-    if (announcementToDelete) {
+    if (announcementToDelete && announcementToDelete.id) {
       handleDelete(announcementToDelete.id)
       setDeleteDialogOpen(false)
       setAnnouncementToDelete(null)
@@ -105,6 +127,7 @@ export default function AnnouncementsPage() {
       content: announcement.description || "",
       priority: announcement.severity || "medium",
     })
+    setValidationErrors([])
     setEditDialogOpen(true)
   }
 
@@ -112,45 +135,34 @@ export default function AnnouncementsPage() {
     e.preventDefault()
     if (!announcementToEdit) return
     
-    setIsEditLoading(true)
+    // Basic client-side validation
+    if (!editFormData.title.trim() || !editFormData.content.trim()) {
+      toast.error("Title and content are required")
+      return
+    }
 
-    const { data, error: updateError } = await supabase
-      .from('announcements')
-      .update({
-        title: editFormData.title,
-        description: editFormData.content,
-        severity: editFormData.priority,
-        updated_at: new Date()
-      })
-      .eq('id', announcementToEdit.id)
-      .select()
-      .single()
+    try {
+      setIsEditLoading(true)
+      setValidationErrors([])
 
-    if (updateError) {
-      console.error('Error updating announcement:', updateError)
-    } else {
-      // Update sessionStorage
-      const updatedAnnouncements = announcements.map((a: Announcement) => 
-        a.id === announcementToEdit.id ? data : a
-      )
-      
-      setAnnouncements(updatedAnnouncements)
-      sessionStorage.setItem('announcementsData', JSON.stringify(updatedAnnouncements))
+      const { data, error } = await updateAnnouncement(announcementToEdit.id as string, editFormData)
 
-      const {error: updatedError} = await supabase
-        .from('mosques')
-        .update({
-          last_announcement: new Date()
-        })
-        .eq('id', user?.id)
-
-      if (updatedError) {
-        console.error('Error updating mosque:', updatedError)
+      if (error) {
+        toast.error(error)
+        return
       }
+
+      // Update local state
+      setAnnouncements(prev => prev.map(a => a.id === announcementToEdit.id ? data : a))
       
-      setIsEditLoading(false)
+      toast.success("Announcement updated successfully")
       setEditDialogOpen(false)
       setAnnouncementToEdit(null)
+    } catch (error: any) {
+      console.error('Error updating announcement:', error)
+      toast.error("Failed to update announcement")
+    } finally {
+      setIsEditLoading(false)
     }
   }
 
@@ -159,11 +171,32 @@ export default function AnnouncementsPage() {
       ...prev,
       [field]: value,
     }))
+    // Clear validation errors when user starts typing
+    if (validationErrors.length > 0) {
+      setValidationErrors([])
+    }
   }
 
   const cancelEdit = () => {
     setEditDialogOpen(false)
     setAnnouncementToEdit(null)
+    setValidationErrors([])
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mosque-green mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading announcements...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -184,32 +217,6 @@ export default function AnnouncementsPage() {
             </Button>
           </Link>
         </div>
-
-        {/* Filters and Search */}
-        {/* <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input placeholder="Search announcements..." className="pl-10" />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
-                </Button>
-                <Button variant="outline" size="sm">
-                  All Status
-                </Button>
-                <Button variant="outline" size="sm">
-                  All Priority
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -232,7 +239,9 @@ export default function AnnouncementsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Published</p>
-                  <p className="text-2xl font-bold text-gray-900">8</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {announcements.filter(a => a.status === 'published').length}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -245,7 +254,9 @@ export default function AnnouncementsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Drafts</p>
-                  <p className="text-2xl font-bold text-gray-900">4</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {announcements.filter(a => a.status === 'draft' || a.status === null).length}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -259,36 +270,54 @@ export default function AnnouncementsPage() {
             <CardDescription>Manage and monitor your community announcements</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {announcements
-                .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
-                .map((announcement) => (
-                <div
-                  key={announcement.id}
-                  className="flex items-start justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="font-semibold text-gray-900">{announcement.title}</h3>
-                      <Badge className={getPriorityColor(announcement.severity)}>{announcement.severity}</Badge>
-                      <Badge className={getStatusColor(announcement.status === null ? 'draft' : announcement.status )}>{announcement.status}</Badge>
+            {announcements.length === 0 ? (
+              <div className="text-center py-8">
+                <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No announcements yet</p>
+                <Link href="/dashboard/announcements/new">
+                  <Button className="mt-4 bg-mosque-green hover:bg-mosque-green-light">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Announcement
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {announcements
+                  .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+                  .map((announcement) => (
+                  <div
+                    key={announcement.id}
+                    className="flex items-start justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="font-semibold text-gray-900">{announcement.title}</h3>
+                        <Badge className={getPriorityColor(announcement.severity)}>{announcement.severity}</Badge>
+                        <Badge className={getStatusColor(announcement.status === null ? 'draft' : announcement.status )}>
+                          {announcement.status || 'draft'}
+                        </Badge>
+                      </div>
+                      <p className="text-gray-600 mb-3 line-clamp-2">{announcement.description}</p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <span>{format(new Date(announcement.created_at), 'MMMM d, yyyy')}</span>
+                        {announcement.updated_at && announcement.updated_at !== announcement.created_at && (
+                          <span className="text-gray-500/75 italic">Edited {format(new Date(announcement.updated_at), 'MMMM d, yyyy')}</span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-gray-600 mb-3 line-clamp-2">{announcement.description}</p>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>{format(new Date(announcement.created_at), 'MMMM d, yyyy')}</span>
+                    <div className="flex items-center space-x-2 ml-4">
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(announcement)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => openDeleteDialog(announcement)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2 ml-4">
-                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(announcement)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => openDeleteDialog(announcement)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
@@ -334,7 +363,9 @@ export default function AnnouncementsPage() {
                   value={editFormData.title}
                   onChange={(e) => handleEditInputChange("title", e.target.value)}
                   required
+                  maxLength={100}
                 />
+                <p className="text-sm text-gray-500">{editFormData.title.length}/100 characters</p>
               </div>
 
               <div className="space-y-2">
@@ -346,6 +377,7 @@ export default function AnnouncementsPage() {
                   onChange={(e) => handleEditInputChange("content", e.target.value)}
                   rows={6}
                   required
+                  maxLength={500}
                 />
                 <p className="text-sm text-gray-500">{editFormData.content.length}/500 characters</p>
               </div>
