@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, Plus, Trash2, Settings, Bell } from 'lucide-react'
+import { Clock, Plus, Trash2, Settings, Bell, Save } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
-// Fixed import to use named export instead of default export
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { DashboardHeader } from "@/components/dashboard-header"
 
 interface DateRangePrayerTimes {
@@ -48,8 +48,8 @@ export default function PrayerTimesPage() {
     {
       id: "1",
       name: "Default Schedule",
-      startDate: "2024-01-01",
-      endDate: "2024-12-31",
+      startDate: "2025-08-01",
+      endDate: "2025-08-31",
       prayerTimes: {
         fajr: "05:30",
         sunrise: "07:00",
@@ -252,12 +252,16 @@ export default function PrayerTimesPage() {
 
   const activeRange = dateRanges.find((range) => range.id === activeSchedule)
 
-  const hasAssignedPrayerTimes = (date: Date) => {
+  const getScheduleForDate = (date: Date) => {
     const dateStr = date.toISOString().split("T")[0]
-    return dateRanges.some((range) => {
+    return dateRanges.find((range) => {
       if (!range.startDate || !range.endDate) return false
       return dateStr >= range.startDate && dateStr <= range.endDate
     })
+  }
+
+  const hasAssignedPrayerTimes = (date: Date) => {
+    return getScheduleForDate(date) !== undefined
   }
 
   const generateHeatMapData = () => {
@@ -307,6 +311,7 @@ export default function PrayerTimesPage() {
               Auto Calculate
             </Button>
             <Button onClick={handleSave} className="bg-mosque-green hover:bg-mosque-green-light" disabled={isLoading}>
+            <Save className="h-4 w-4 mr-2" />   
               Save Changes
             </Button>
           </div>
@@ -568,33 +573,91 @@ export default function PrayerTimesPage() {
                     <span className="text-sm font-medium">Prayer Time Coverage</span>
                     <span className="text-xs text-gray-500">{currentMonth}</span>
                   </div>
-                  <div className="grid grid-cols-7 gap-1 text-xs">
-                    {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
-                      <div key={index} className="text-center text-gray-400 font-medium py-1">
-                        {day}
+                  <TooltipProvider>
+                    <div className="grid grid-cols-7 gap-1 text-xs">
+                        {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+                          <div key={index} className="text-center text-gray-400 font-medium py-1">
+                            {day}
+                          </div>
+                        ))}
+                        {heatMapData.map((dayData, index) => {
+                          if (dayData === null) {
+                            return <div key={index}></div>
+                          }
+                          
+                          const schedule = getScheduleForDate(dayData.date)
+                          const isFriday = dayData.date.getDay() === 5
+                          
+                          return (
+                            <Tooltip key={index}>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={`aspect-square rounded-sm flex items-center justify-center text-xs cursor-pointer ${
+                                    dayData.hasSchedule
+                                      ? "bg-mosque-green text-white font-medium"
+                                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {dayData.day}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs animate-in fade-in-0 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150">
+                                <div className="space-y-2">
+                                  <div className="font-medium text-sm">
+                                    {dayData.date.toLocaleDateString('en-US', { 
+                                      weekday: 'long', 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })}
+                                  </div>
+                                  
+                                  {schedule ? (
+                                    <div className="space-y-1">
+                                      <div className="text-xs text-gray-500 font-medium">
+                                        Schedule: {schedule.name}
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                        {Object.entries(schedule.prayerTimes).map(([prayer, time]) => (
+                                          <div key={prayer} className="flex justify-between">
+                                            <span className="text-gray-600">
+                                              {prayerNames[prayer as keyof typeof prayerNames]}:
+                                            </span>
+                                            <span className="font-mono font-medium">
+                                              {calculateFinalTime(schedule, prayer)}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      {isFriday && (
+                                        <div className="pt-1 border-t border-gray-200">
+                                          <div className="text-xs text-gray-500 font-medium">Jummah Times:</div>
+                                          <div className="grid grid-cols-2 gap-x-4 text-xs">
+                                            <div className="flex justify-between">
+                                              <span className="text-gray-600">First:</span>
+                                              <span className="font-mono font-medium">{jummahTimes.first}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span className="text-gray-600">Second:</span>
+                                              <span className="font-mono font-medium">{jummahTimes.second}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-500">
+                                      No prayer schedule assigned for this date
+                                    </div>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        })}
                       </div>
-                    ))}
-                    {heatMapData.map((dayData, index) => (
-                      <div
-                        key={index}
-                        className={`aspect-square rounded-sm flex items-center justify-center text-xs ${
-                          dayData === null
-                            ? ""
-                            : dayData.hasSchedule
-                              ? "bg-mosque-green text-white font-medium"
-                              : "bg-gray-100 text-gray-400 hover:bg-gray-200"
-                        }`}
-                        title={
-                          dayData
-                            ? `${dayData.date.toLocaleDateString()} - ${dayData.hasSchedule ? "Has schedule" : "No schedule"}`
-                            : ""
-                        }
-                      >
-                        {dayData?.day}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                    </TooltipProvider>
+                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                     <div className="flex items-center space-x-2">
                       <div className="w-3 h-3 bg-mosque-green rounded-sm"></div>
                       <span>Scheduled</span>
