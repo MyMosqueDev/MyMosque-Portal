@@ -45,36 +45,18 @@ export default function DashboardPage() {
     },
     {
       title: "Announcements Pushed",
-      value: mosque.announcements.length,
+      value: mosque.announcements.filter(announcement => announcement.status === "published").length,
       icon: <Bell className="h-4 w-4 text-mosque-green" />,
     },
     {
       title: "Events Created",
-      value: mosque.events.length,
+      value: mosque.events.filter(event => event.status === "published").length,
       icon: <Calendar className="h-4 w-4 text-mosque-blue" />,
     },
     {
       title: "Total Donations",
       value: "Coming Soon...",
       icon: <DollarSign className="h-4 w-4 text-mosque-purple" />,
-    },
-  ]
-
-  const recentAnnouncements = [
-    {
-      title: "New Jummah Timing",
-      date: "May 8, 2025",
-      priority: "low", 
-    },
-    {
-      title: "Donation Drive",
-      date: "May 4, 2025",
-      priority: "medium",
-    },
-    {
-      title: "Ramadan Schedule",
-      date: "April 28, 2025",
-      priority: "high",
     },
   ]
 
@@ -144,27 +126,27 @@ export default function DashboardPage() {
                 <CardTitle>Quick Actions</CardTitle>
                 <CardDescription>Common tasks for managing your mosque</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent>
                 <Link href="/dashboard/announcements/new">
-                  <Button className="w-full justify-start bg-mosque-green hover:bg-mosque-green-light">
+                  <Button variant="outline" className="w-full justify-start bg-transparen my-1">
                     <Bell className="h-4 w-4 mr-2" />
                     New Announcement
                   </Button>
                 </Link>
                 <Link href="/dashboard/events/new">
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
+                  <Button variant="outline" className="w-full justify-start bg-transparent my-1">
                     <Calendar className="h-4 w-4 mr-2" />
                     Create Event
                   </Button>
                 </Link>
                 <Link href="/dashboard/prayer-times">
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
+                  <Button variant="outline" className="w-full justify-start bg-transparent my-1">
                     <Clock className="h-4 w-4 mr-2" />
                     Update Prayer Times
                   </Button>
                 </Link>
                 <Link href="/dashboard/profile">
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
+                  <Button variant="outline" className="w-full justify-start bg-transparent my-1">
                     <MapPin className="h-4 w-4 mr-2" />
                     Edit Mosque Info
                   </Button>
@@ -234,7 +216,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {upcomingEvents.map((event, index) => (
+                  {mosque.events.filter(event => event.status === "published").slice(0, 3).map((event, index) => (
                     <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                       <div className="w-2 h-2 bg-mosque-blue rounded-full mt-2"></div>
                       <div className="flex-1">
@@ -242,11 +224,11 @@ export default function DashboardPage() {
                         <div className="space-y-1">
                           <div className="flex items-center text-sm text-gray-600">
                             <Calendar className="h-3 w-3 mr-1" />
-                            {event.date}
+                            {format(new Date(event.date), 'MMMM d, yyyy')}
                           </div>
                           <div className="flex items-center text-sm text-gray-600">
                             <Clock className="h-3 w-3 mr-1" />
-                            {event.time}
+                            {format(new Date(event.date), 'h:mm a')}
                           </div>
                           <div className="flex items-center text-sm text-gray-600">
                             <MapPin className="h-3 w-3 mr-1" />

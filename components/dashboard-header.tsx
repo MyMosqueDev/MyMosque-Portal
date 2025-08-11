@@ -25,9 +25,9 @@ export function DashboardHeader() {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-center">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center space-x-2">
+          <Link href="/dashboard" className="flex items-center space-x-2 absolute left-20">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
               <img src="/images/logo.png" alt="MyMosque Logo" className="w-full h-full object-contain" />
             </div>
@@ -51,14 +51,14 @@ export function DashboardHeader() {
           </nav>
 
           {/* Right side actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 absolute right-20">
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
+            {/* <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
                 3
               </span>
-            </Button>
+            </Button> */}
 
             {/* User Menu */}
             <DropdownMenu>
