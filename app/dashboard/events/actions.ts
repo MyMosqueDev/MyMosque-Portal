@@ -69,7 +69,7 @@ export async function getEvents() {
         const {data, error} = await supabase
         .from('events')
         .select('*')
-        .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+        .eq('masjid_id', user.id)
         .neq('status', 'deleted')
         .order('date', { ascending: false })
         if (error) {
@@ -83,7 +83,6 @@ export async function getEvents() {
 }
 
 export async function createEvent(event: EventFormData) {
-    console.log('creating event')
     try {
         const supabase = await createClient()
 
@@ -98,7 +97,7 @@ export async function createEvent(event: EventFormData) {
             const {data: mosque, error: mosqueError} = await supabase
             .from('mosques')
             .select('name')
-            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('uid', user.id)
             .single()
             if (mosqueError) {
                 throw new Error('Failed to fetch mosque')
@@ -123,7 +122,7 @@ export async function createEvent(event: EventFormData) {
             location: sanitizeInput(event.location),
             date: event.date,
             status: event.status,
-            masjid_id: user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id,
+            masjid_id: user.id,
             image: imageUrl,
             created_at: new Date().toISOString(),
         }
@@ -152,7 +151,7 @@ export async function createEvent(event: EventFormData) {
             .update({
                 last_event: new Date().toISOString()
             })
-            .eq('id', user?.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user?.id)
+            .eq('uid', user?.id)
 
         return { error: null }
         
@@ -189,7 +188,7 @@ export async function updateEvent(id: string, data: { title: string; description
             throw new Error('Event not found')
         }
 
-        if (event.masjid_id !== (user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)) {
+        if (event.masjid_id !== user.id) {
             throw new Error('You do not have permission to edit this event')
         }
 
@@ -208,7 +207,7 @@ export async function updateEvent(id: string, data: { title: string; description
             .from('events')
             .update(sanitizedData)
             .eq('id', id)
-            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('masjid_id', user.id)
             .select()
             .single()
 
@@ -222,7 +221,7 @@ export async function updateEvent(id: string, data: { title: string; description
             .update({
                 last_event: new Date().toISOString()
             })
-            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('uid', user.id)
 
         revalidatePath('/dashboard/events')
         
@@ -254,7 +253,7 @@ export async function deleteEvent(id: string) {
             throw new Error('Event not found')
         }
 
-        if (event.masjid_id !== (user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)) {
+        if (event.masjid_id !== user.id) {
             throw new Error('You do not have permission to delete this event')
         }
 
@@ -266,7 +265,7 @@ export async function deleteEvent(id: string) {
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
-            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('masjid_id', user.id)
 
         if (deleteError) {
             throw new Error('Failed to delete event')

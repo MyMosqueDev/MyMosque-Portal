@@ -63,7 +63,7 @@ export async function getPrayerTimes(): Promise<ActionResult> {
         const { data: prayerTimes, error: prayerTimesError } = await supabase
             .from('test_prayer_times')
             .select('*')
-            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('masjid_id', user.id)
             .neq('status', 'deleted')
 
         if (prayerTimesError) {
@@ -106,13 +106,14 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
         }
 
         const user = await getCurrentUser()
+        console.log('user', user.id)
         const supabase = await createClient()
 
         // Check if mosque exists
         const { error: mosqueError } = await supabase
             .from('mosques')
             .select('id')
-            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('uid', user.id)
             .single()
 
         if (mosqueError) {
@@ -129,7 +130,7 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
         const sanitizedData = {
             ...dataWithoutIsNew,
             name: sanitizedName,
-            masjid_id: user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id
+            masjid_id: user.id
         }
 
         const { data: newPrayerTimes, error: createError } = await supabase
@@ -174,7 +175,7 @@ export async function deletePrayerTimes(id: string): Promise<ActionResult> {
             .from('test_prayer_times')
             .select('id, masjid_id')
             .eq('id', id)
-            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('masjid_id', user.id)
             .single()
 
         if (fetchError || !existingSchedule) {
@@ -234,7 +235,7 @@ export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes):
             .from('test_prayer_times')
             .select('id, masjid_id')
             .eq('id', id)
-            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('masjid_id', user.id)
             .single()
 
         if (fetchError || !existingSchedule) {
@@ -271,7 +272,7 @@ export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes):
             .update({
                 last_prayer_time: new Date().toISOString()
             })
-            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('uid', user.id)
 
         if (mosqueUpdateError) {
             console.error('Error updating mosque last_prayer_time:', mosqueUpdateError)
@@ -315,7 +316,7 @@ export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<Acti
             .update({
                 jummah_times: jummahTimes
             })
-            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('uid', user.id)
 
         if (updateError) {
             console.error('Error updating jummah times:', updateError)
@@ -353,7 +354,7 @@ export async function updatePrayerSettings(settings: PrayerSettings): Promise<Ac
             .update({
                 prayer_settings: settings
             })
-            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('uid', user.id)
 
         if (updateError) {
             console.error('Error updating prayer settings:', updateError)
@@ -389,7 +390,7 @@ export async function getMosqueSettings(): Promise<ActionResult> {
         const { data: mosque, error: mosqueError } = await supabase
             .from('mosques')
             .select('jummah_times, prayer_settings')
-            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .eq('uid', user.id)
             .single()
 
         if (mosqueError) {

@@ -64,12 +64,11 @@ export async function getAnnouncements() {
         if (userError || !user) {
             throw new Error('Authentication required')
         }
-
         // Fetch announcements with ownership check
         const { data, error } = await supabase
         .from('announcements')
         .select('*')
-        .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+        .eq('masjid_id', user.id)
         .neq('status', 'deleted')
         .order('created_at', { ascending: false })
 
@@ -108,7 +107,7 @@ export async function newAnnouncement(announcement: Announcement) {
             description: sanitizeInput(announcement.description),
             severity: announcement.severity,
             status: announcement.status,
-            masjid_id: user?.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user?.id,
+            masjid_id: user?.id,
         }
 
         const { data: newAnnouncement, error: createError } = await supabase
@@ -122,7 +121,7 @@ export async function newAnnouncement(announcement: Announcement) {
         .update({
             last_announcement: new Date().toISOString()
         })
-        .eq('id', user?.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user?.id)
+        .eq('uid', user?.id)
 
         if (createError) {
             throw new Error('Failed to create announcement')
@@ -162,7 +161,7 @@ export async function updateAnnouncement(id: string, data: { title: string; cont
             throw new Error('Announcement not found')
         }
 
-        if (announcement.masjid_id !== (user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)) {
+        if (announcement.masjid_id !== user.id) {
             throw new Error('You do not have permission to edit this announcement')
         }
 
@@ -179,7 +178,7 @@ export async function updateAnnouncement(id: string, data: { title: string; cont
         .from('announcements')
         .update(sanitizedData)
         .eq('id', id)
-        .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+        .eq('masjid_id', user.id)
         .select()
         .single()
 
@@ -225,7 +224,7 @@ export async function deleteAnnouncement(id: string) {
             throw new Error('Announcement not found')
         }
 
-        if (announcement.masjid_id !== (user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)) {
+        if (announcement.masjid_id !== user.id) {
             throw new Error('You do not have permission to delete this announcement')
         }
 
@@ -274,7 +273,7 @@ export async function createAnnouncement(data: { title: string; content: string;
             description: sanitizeInput(data.content),
             severity: data.priority,
             status: data.status || 'draft',
-            masjid_id: user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id,
+            masjid_id: user.id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }
