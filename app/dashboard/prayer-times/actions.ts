@@ -4,8 +4,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
-import { DateRangePrayerTimes } from "@/lib/types";
-import { validatePrayerSchedule, validateDateOverlap, validateJummahTimes, ValidationResult } from "@/lib/validation";
+import { DateRangePrayerTimes, JummahTime, PrayerSettings } from "@/lib/types";
+import { validatePrayerSchedule, validateJummahTimes } from "@/lib/validation";
 
 interface ActionResult {
   success: boolean;
@@ -109,7 +109,7 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
         const supabase = await createClient()
 
         // Check if mosque exists
-        const { data: mosque, error: mosqueError } = await supabase
+        const { error: mosqueError } = await supabase
             .from('mosques')
             .select('id')
             .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
@@ -124,7 +124,7 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
         }
 
         // Sanitize input and remove isNew flag
-        const { isNew, ...dataWithoutIsNew } = data
+        const { ...dataWithoutIsNew } = data
         const sanitizedName = sanitizeInput(dataWithoutIsNew.name)
         const sanitizedData = {
             ...dataWithoutIsNew,
@@ -245,7 +245,7 @@ export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes):
         }
 
         // Sanitize input and remove isNew flag
-        const { isNew, ...dataWithoutIsNew } = data
+        const { ...dataWithoutIsNew } = data
         const sanitizedName = sanitizeInput(dataWithoutIsNew.name)
         const sanitizedData = {
             ...dataWithoutIsNew,
@@ -296,7 +296,7 @@ export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes):
     }
 }
 
-export async function updateJummahTimes(jummahTimes: any[]): Promise<ActionResult> {
+export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<ActionResult> {
     try {
         // Validate jummah times
         const validation = validateJummahTimes(jummahTimes)
@@ -343,7 +343,7 @@ export async function updateJummahTimes(jummahTimes: any[]): Promise<ActionResul
     }
 }
 
-export async function updatePrayerSettings(settings: any): Promise<ActionResult> {
+export async function updatePrayerSettings(settings: PrayerSettings): Promise<ActionResult> {
     try {
         const user = await getCurrentUser()
         const supabase = await createClient()

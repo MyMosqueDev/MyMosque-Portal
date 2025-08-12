@@ -92,7 +92,7 @@ export async function createEvent(event: EventFormData) {
         if (userError || !user) {
             revalidatePath('/login')
             throw new Error('Authentication required')
-        } 'authenticated'
+        } 
 
         if (!event.host) {
             const {data: mosque, error: mosqueError} = await supabase
@@ -128,7 +128,7 @@ export async function createEvent(event: EventFormData) {
             created_at: new Date().toISOString(),
         }
 
-        const {data: imageData, error: imageError} = await supabase.storage.from('images')
+        const {error: imageError} = await supabase.storage.from('images')
         .upload(imageName, event.image as File)
         if (imageError) {
             throw new Error(imageError.message)

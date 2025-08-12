@@ -3,10 +3,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Calendar, Clock, MapPin, Star, TrendingUp, Eye, DollarSign } from "lucide-react"
+import { Bell, Calendar, Clock, MapPin, Star, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { MosqueData, User } from "@/lib/types"
 import { useMosque } from "@/hooks/useMosque"
 import { format } from "date-fns"
@@ -57,27 +57,6 @@ export default function DashboardPage() {
       title: "Total Donations",
       value: "Coming Soon...",
       icon: <DollarSign className="h-4 w-4 text-mosque-purple" />,
-    },
-  ]
-
-  const upcomingEvents = [
-    {
-      title: "Nueces Night",
-      date: "Tomorrow",
-      time: "8:30 PM - 10:30 PM",
-      location: "Main Prayer Hall",
-    },
-    {
-      title: "Friday Khutbah",
-      date: "Friday",
-      time: "1:30 PM - 2:30 PM",
-      location: "Main Prayer Hall",
-    },
-    {
-      title: "Community Iftar",
-      date: "Saturday",
-      time: "7:00 PM - 9:00 PM",
-      location: "Community Center",
     },
   ]
 

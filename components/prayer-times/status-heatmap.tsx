@@ -140,7 +140,7 @@ export function StatusHeatmap({ dateRanges, jummahTimes }: StatusHeatmapProps) {
                             Schedule: {schedule.name}
                           </div>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                            {Object.entries(schedule.prayerTimes).map(([prayer, time]) => (
+                            {Object.entries(schedule.prayerTimes).map(([prayer]) => (
                               <div key={prayer} className="flex justify-between">
                                 <span className="text-gray-600">
                                   {prayerNames[prayer as keyof typeof prayerNames]}:

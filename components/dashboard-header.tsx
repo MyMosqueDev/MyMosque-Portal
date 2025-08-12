@@ -10,9 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Bell, Settings, LogOut, User } from "lucide-react"
+import { Settings, LogOut, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export function DashboardHeader() {
   const router = useRouter()
@@ -29,7 +30,7 @@ export function DashboardHeader() {
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center space-x-2 absolute left-20">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
-              <img src="/images/logo.png" alt="MyMosque Logo" className="w-full h-full object-contain" />
+              <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold text-gray-900">MyMosque</span>
           </Link>

@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Bell, Save } from 'lucide-react'
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DateRangePrayerTimes } from "@/lib/types"
-import { createPrayerTimes, getPrayerTimes, deletePrayerTimes, updatePrayerTimes, updateJummahTimes, updatePrayerSettings, getMosqueSettings } from "./actions"
+import { createPrayerTimes, getPrayerTimes, updatePrayerTimes, updateJummahTimes, updatePrayerSettings, getMosqueSettings } from "./actions"
 import { ScheduleForm } from "@/components/prayer-times/schedule-form"
 import { JummahTimes } from "@/components/prayer-times/jummah-times"
 import { PrayerSettings } from "@/components/prayer-times/prayer-settings"
@@ -14,7 +14,6 @@ import { StatusHeatmap } from "@/components/prayer-times/status-heatmap"
 import { SettingsSidebar } from "@/components/prayer-times/prayer-settings"
 import { LoadingState } from "@/components/prayer-times/loading-state"
 import { useToast } from "@/hooks/use-toast"
-import { validateDateOverlap } from "@/lib/validation"
 
 interface JummahTime {
   id: string
@@ -73,7 +72,7 @@ export default function PrayerTimesPage() {
         const result = await getPrayerTimes()
         
         if (result.success && result.data) {
-          const transformedData = result.data.map((item: any) => ({
+          const transformedData = result.data.map((item: DateRangePrayerTimes) => ({
             id: item.id?.toString(),
             name: item.name,
             startDate: item.startDate ? new Date(item.startDate).toISOString().split('T')[0] : "",

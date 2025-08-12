@@ -19,7 +19,6 @@ import { toast } from "sonner"
 import { getAnnouncements, updateAnnouncement, deleteAnnouncement } from "./actions"
 
 export default function AnnouncementsPage() {
-  const [user, setUser] = useState<User | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -34,8 +33,6 @@ export default function AnnouncementsPage() {
   const [isEditLoading, setIsEditLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   
-  useUser({setUser})
-
   // Fetch announcements from server
   const fetchAnnouncements = async () => {
     try {
@@ -158,7 +155,7 @@ export default function AnnouncementsPage() {
       toast.success("Announcement updated successfully")
       setEditDialogOpen(false)
       setAnnouncementToEdit(null)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating announcement:', error)
       toast.error("Failed to update announcement")
     } finally {
@@ -328,7 +325,7 @@ export default function AnnouncementsPage() {
           <DialogHeader>
             <DialogTitle>Delete Announcement</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{announcementToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{announcementToDelete?.title}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

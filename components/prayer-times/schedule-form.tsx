@@ -36,8 +36,6 @@ export function ScheduleForm({
   activeSchedule,
   onDateRangesChange,
   onActiveScheduleChange,
-  onSave,
-  isLoading
 }: ScheduleFormProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null)
@@ -477,7 +475,7 @@ export function ScheduleForm({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{dateRanges.find(range => range.id === scheduleToDelete)?.name || 'this schedule'}"?
+              Are you sure you want to delete &quot;{dateRanges.find(range => range.id === scheduleToDelete)?.name || 'this schedule'}&quot;?
               <br /><br />
               This action cannot be undone and will permanently remove this prayer schedule.
             </AlertDialogDescription>

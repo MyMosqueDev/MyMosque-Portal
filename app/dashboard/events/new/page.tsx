@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Save, Calendar, Upload, Share2, Users, MapPin, Clock, Image as ImageIcon, AlertCircle } from "lucide-react"
+import { ArrowLeft, Save, Calendar, Upload, Share2, Users, MapPin, Image as ImageIcon, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { createEvent } from "../actions"
 import { toast } from "sonner"
-import { Event, EventFormData } from "@/lib/types"
+import { EventFormData } from "@/lib/types"
 
 interface ValidationErrors {
   title?: string
@@ -48,15 +48,16 @@ export default function NewEventPage() {
   // Helper function to convert 12-hour time to 24-hour format
   const convertTo24Hour = (time12h: string): string => {
     const [time, modifier] = time12h.split(' ')
-    let [hours, minutes] = time.split(':')
+    const [hours, minutes] = time.split(':')
+    let adjustedHours = hours
     
     if (hours === '12') {
-      hours = modifier === 'PM' ? '12' : '00'
+      adjustedHours = modifier === 'PM' ? '12' : '00'
     } else if (modifier === 'PM') {
-      hours = String(parseInt(hours, 10) + 12)
+      adjustedHours = String(parseInt(hours, 10) + 12)
     }
     
-    return `${hours.padStart(2, '0')}:${minutes}`
+    return `${adjustedHours.padStart(2, '0')}:${minutes}`
   }
 
   // Validation function
@@ -473,9 +474,11 @@ export default function NewEventPage() {
                     <div className="w-full aspect-square rounded-lg mb-4 overflow-hidden border border-gray-200">
                       {formData.image ? (
                         <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                          <img 
+                          <Image 
                             src={URL.createObjectURL(formData.image)} 
                             alt="Event preview" 
+                            width={400}
+                            height={400}
                             className="w-full h-full object-cover"
                           />
                         </div>

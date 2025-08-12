@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 
 export default function JoinPage() {
@@ -49,7 +50,7 @@ export default function JoinPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2 mb-6">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
-              <img src="/images/logo.png" alt="MyMosque Logo" className="w-full h-full object-contain" />
+              <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold text-gray-900">MyMosque</span>
           </Link>

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Calendar, Plus, Search, MapPin, Clock, Users, Edit, Trash2, Filter, Save } from "lucide-react"
+import { Calendar, Plus, MapPin, Clock, Users, Edit, Trash2, Save } from "lucide-react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { useState, useEffect } from "react"
@@ -35,15 +35,16 @@ export default function EventsPage() {
   // Helper function to convert 12-hour time to 24-hour format
   const convertTo24Hour = (time12h: string): string => {
     const [time, modifier] = time12h.split(' ')
-    let [hours, minutes] = time.split(':')
-    
+    const [hours, minutes] = time.split(':')
+    let adjustedHours = hours
+
     if (hours === '12') {
-      hours = modifier === 'PM' ? '12' : '00'
+      adjustedHours = modifier === 'PM' ? '12' : '00'
     } else if (modifier === 'PM') {
-      hours = String(parseInt(hours, 10) + 12)
+      adjustedHours = String(parseInt(hours, 10) + 12)
     }
     
-    return `${hours.padStart(2, '0')}:${minutes}`
+    return `${adjustedHours.padStart(2, '0')}:${minutes}`
   }
 
   const fetchEvents = async () => {
@@ -199,7 +200,7 @@ export default function EventsPage() {
       toast.success("Event updated successfully")
       setEditDialogOpen(false)
       setEventToEdit(null)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating event:', error)
       toast.error("Failed to update event")
     } finally {
@@ -389,7 +390,7 @@ export default function EventsPage() {
           <DialogHeader>
             <DialogTitle>Delete Event</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{eventToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{eventToDelete?.title}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

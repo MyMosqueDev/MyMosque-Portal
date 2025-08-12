@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-
+import Image from "next/image"
 export default function LoginPage() {
   // TODO: Remove this once out of dev
   const [email, setEmail] = useState("ali.vayani2006@gmail.com")
@@ -43,7 +43,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2 mb-6">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
-              <img src="/images/logo.png" alt="MyMosque Logo" className="w-full h-full object-contain" />
+              <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold text-gray-900">MyMosque</span>
           </Link>

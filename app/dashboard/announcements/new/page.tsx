@@ -9,18 +9,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { ArrowLeft, Save, Send } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { supabase } from "@/utils/supabase/client"
-import useUser from "@/hooks/useUser"
-import { Announcement, User } from "@/lib/types"
+import { Announcement } from "@/lib/types"
 import { newAnnouncement } from "../actions"
 
 export default function NewAnnouncementPage() {
-  const [user, setUser] = useState<User | null>(null)
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -32,7 +28,6 @@ export default function NewAnnouncementPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  useUser({setUser})
 
   const handleSubmit = async (e: React.FormEvent, action: "draft" | "publish") => {
     e.preventDefault()

@@ -69,7 +69,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl shadow-lg overflow-hidden">
-              <img src="/images/logo.png" alt="MyMosque Logo" className="w-full h-full object-contain" />
+              <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-mosque-green to-mosque-blue bg-clip-text text-transparent">
               MyMosque
@@ -328,7 +328,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-3 mb-4 md:mb-0">
               <div className="w-10 h-10 rounded-2xl shadow-lg overflow-hidden">
-                <img src="/images/logo.png" alt="MyMosque Logo" className="w-full h-full object-contain" />
+                <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-mosque-green to-mosque-blue bg-clip-text text-transparent">
                 MyMosque
