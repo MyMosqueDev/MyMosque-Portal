@@ -127,4 +127,5 @@ export type DateRangePrayerTimes ={
         maghrib: number
         isha: number
     }
+    isNew?: boolean // Flag to track if this is a new schedule not yet saved to database
 }

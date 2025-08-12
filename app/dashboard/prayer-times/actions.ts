@@ -5,6 +5,14 @@ import { cookies } from "next/headers";
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
 import { DateRangePrayerTimes } from "@/lib/types";
+import { validatePrayerSchedule, validateDateOverlap, validateJummahTimes, ValidationResult } from "@/lib/validation";
+
+interface ActionResult {
+  success: boolean;
+  error?: string;
+  errors?: Array<{ field: string; message: string }>;
+  data?: any;
+}
 
 async function createClient() {
     const cookieStore = await cookies();
@@ -22,8 +30,8 @@ async function createClient() {
                         cookiesToSet.forEach(({ name, value, options }) =>
                         cookieStore.set(name, value, options)
                         )
-                    } catch {
-                        console.log('Error setting cookies')
+                    } catch (error) {
+                        console.error('Error setting cookies:', error)
                     }
                 }
             }
@@ -31,197 +39,380 @@ async function createClient() {
     )
 }
 
-export async function getPrayerTimes() {
+async function getCurrentUser() {
     const supabase = await createClient()
     const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-        revalidatePath('/login')
-        throw new Error('Authentication required')
+    
+    if (userError) {
+        console.error('Authentication error:', userError)
+        throw new Error('Authentication failed')
     }
-
-    const { data: prayerTimes, error: prayerTimesError } = await supabase
-    .from('test_prayer_times')
-    .select('*')
-    .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
-    .neq('status', 'deleted')
-
-    if (prayerTimesError) {
-        console.log('prayer times error')
-        return { error: prayerTimesError.message }
+    
+    if (!user) {
+        throw new Error('User not authenticated')
     }
-
-    return prayerTimes
+    
+    return user
 }
 
-function validatePrayerTimes(data: { startDate: string, endDate: string}) {
-    const errors: string[] = []
+export async function getPrayerTimes(): Promise<ActionResult> {
+    try {
+        const user = await getCurrentUser()
+        const supabase = await createClient()
 
-    if (data.startDate > data.endDate) {
-        errors.push("Start date must be before end date")
-    }
-
-    return errors
-}
-
-export async function createPrayerTimes(data: DateRangePrayerTimes) {
-    console.log(data)
-    const errors = validatePrayerTimes(data)
-    if (errors.length > 0) {
-        return { errors }
-    }
-
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-        revalidatePath('/login')
-        throw new Error('Authentication required')
-    }
-
-    const { data: mosque, error: mosqueError } = await supabase
-    .from('mosques')
-    .select('id')
-    .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
-    .single()
-
-    const sanatizeName = sanitizeInput(data.name)
-    const sanatizedTimes = {
-        ...data,
-        name: sanatizeName,
-        masjid_id: user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id
-    }
-
-    const {data: newPrayerTimes, error: createError} = await supabase
+        const { data: prayerTimes, error: prayerTimesError } = await supabase
             .from('test_prayer_times')
-            .insert(sanatizedTimes)
+            .select('*')
+            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .neq('status', 'deleted')
+
+        if (prayerTimesError) {
+            console.error('Database error fetching prayer times:', prayerTimesError)
+            return { 
+                success: false, 
+                error: 'Failed to fetch prayer times. Please try again.' 
+            }
+        }
+
+        return { 
+            success: true, 
+            data: prayerTimes || [] 
+        }
+    } catch (error) {
+        console.error('Error in getPrayerTimes:', error)
+        if (error instanceof Error && error.message === 'User not authenticated') {
+            revalidatePath('/login')
+            return { 
+                success: false, 
+                error: 'Authentication required. Please log in again.' 
+            }
+        }
+        return { 
+            success: false, 
+            error: 'An unexpected error occurred. Please try again.' 
+        }
+    }
+}
+
+export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<ActionResult> {
+    try {
+        // Validate the prayer schedule data
+        const validation = validatePrayerSchedule(data)
+        if (!validation.isValid) {
+            return {
+                success: false,
+                errors: validation.errors
+            }
+        }
+
+        const user = await getCurrentUser()
+        const supabase = await createClient()
+
+        // Check if mosque exists
+        const { data: mosque, error: mosqueError } = await supabase
+            .from('mosques')
+            .select('id')
+            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .single()
+
+        if (mosqueError) {
+            console.error('Error checking mosque:', mosqueError)
+            return {
+                success: false,
+                error: 'Mosque not found. Please contact support.'
+            }
+        }
+
+        // Sanitize input and remove isNew flag
+        const { isNew, ...dataWithoutIsNew } = data
+        const sanitizedName = sanitizeInput(dataWithoutIsNew.name)
+        const sanitizedData = {
+            ...dataWithoutIsNew,
+            name: sanitizedName,
+            masjid_id: user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id
+        }
+
+        const { data: newPrayerTimes, error: createError } = await supabase
+            .from('test_prayer_times')
+            .insert(sanitizedData)
             .select()
             .single()
 
-    if (createError) {
-        console.log('create error')
-        return { error: createError.message }
-    }
+        if (createError) {
+            console.error('Error creating prayer times:', createError)
+            return {
+                success: false,
+                error: 'Failed to create prayer schedule. Please try again.'
+            }
+        }
 
-    revalidatePath('/dashboard/prayer-times')
-    return { success: true }
-}
-
-export async function deletePrayerTimes(id: string) {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-        revalidatePath('/login')
-        throw new Error('Authentication required')
-    }
-
-    const { data: prayerTimes, error: prayerTimesError } = await supabase
-    .from('test_prayer_times')
-    .update({
-        status: 'deleted'
-    })
-    .eq('id', id)
-
-    if (prayerTimesError) {
-        console.log('prayer times error')
-        return { error: prayerTimesError.message }
+        revalidatePath('/dashboard/prayer-times')
+        return { success: true, data: newPrayerTimes }
+    } catch (error) {
+        console.error('Error in createPrayerTimes:', error)
+        if (error instanceof Error && error.message === 'User not authenticated') {
+            revalidatePath('/login')
+            return {
+                success: false,
+                error: 'Authentication required. Please log in again.'
+            }
+        }
+        return {
+            success: false,
+            error: 'An unexpected error occurred. Please try again.'
+        }
     }
 }
 
-export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes) {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-        revalidatePath('/login')
-        throw new Error('Authentication required')
+export async function deletePrayerTimes(id: string): Promise<ActionResult> {
+    try {
+        const user = await getCurrentUser()
+        const supabase = await createClient()
+
+        // Verify the schedule belongs to the user's mosque
+        const { data: existingSchedule, error: fetchError } = await supabase
+            .from('test_prayer_times')
+            .select('id, masjid_id')
+            .eq('id', id)
+            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .single()
+
+        if (fetchError || !existingSchedule) {
+            return {
+                success: false,
+                error: 'Schedule not found or you do not have permission to delete it.'
+            }
+        }
+
+        const { error: deleteError } = await supabase
+            .from('test_prayer_times')
+            .update({ status: 'deleted' })
+            .eq('id', id)
+
+        if (deleteError) {
+            console.error('Error deleting prayer times:', deleteError)
+            return {
+                success: false,
+                error: 'Failed to delete prayer schedule. Please try again.'
+            }
+        }
+
+        revalidatePath('/dashboard/prayer-times')
+        return { success: true }
+    } catch (error) {
+        console.error('Error in deletePrayerTimes:', error)
+        if (error instanceof Error && error.message === 'User not authenticated') {
+            revalidatePath('/login')
+            return {
+                success: false,
+                error: 'Authentication required. Please log in again.'
+            }
+        }
+        return {
+            success: false,
+            error: 'An unexpected error occurred. Please try again.'
+        }
     }
-
-    const { data: prayerTimes, error: prayerTimesError } = await supabase
-    .from('test_prayer_times')
-    .update(data)
-    .eq('id', id)
-
-    if (prayerTimesError) {
-        console.log('prayer times error')
-        return { error: prayerTimesError.message }
-    }
-
-    // Update mosque table with last prayer time update
-    const { data: updatePrayerTimes, error: updateError } = await supabase
-    .from('mosques')
-    .update({
-        last_prayer_time: new Date().toISOString()
-    })
-    .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
-
-    revalidatePath('/dashboard/prayer-times')
-    return { success: true }
 }
 
-export async function updateJummahTimes(jummahTimes: any[]) {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-        revalidatePath('/login')
-        throw new Error('Authentication required')
+export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes): Promise<ActionResult> {
+    try {
+        // Validate the prayer schedule data
+        const validation = validatePrayerSchedule(data)
+        if (!validation.isValid) {
+            return {
+                success: false,
+                errors: validation.errors
+            }
+        }
+
+        const user = await getCurrentUser()
+        const supabase = await createClient()
+
+        // Verify the schedule belongs to the user's mosque
+        const { data: existingSchedule, error: fetchError } = await supabase
+            .from('test_prayer_times')
+            .select('id, masjid_id')
+            .eq('id', id)
+            .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .single()
+
+        if (fetchError || !existingSchedule) {
+            return {
+                success: false,
+                error: 'Schedule not found or you do not have permission to update it.'
+            }
+        }
+
+        // Sanitize input and remove isNew flag
+        const { isNew, ...dataWithoutIsNew } = data
+        const sanitizedName = sanitizeInput(dataWithoutIsNew.name)
+        const sanitizedData = {
+            ...dataWithoutIsNew,
+            name: sanitizedName
+        }
+
+        const { error: updateError } = await supabase
+            .from('test_prayer_times')
+            .update(sanitizedData)
+            .eq('id', id)
+
+        if (updateError) {
+            console.error('Error updating prayer times:', updateError)
+            return {
+                success: false,
+                error: 'Failed to update prayer schedule. Please try again.'
+            }
+        }
+
+        // Update mosque table with last prayer time update
+        const { error: mosqueUpdateError } = await supabase
+            .from('mosques')
+            .update({
+                last_prayer_time: new Date().toISOString()
+            })
+            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+
+        if (mosqueUpdateError) {
+            console.error('Error updating mosque last_prayer_time:', mosqueUpdateError)
+            // Don't fail the entire operation for this
+        }
+
+        revalidatePath('/dashboard/prayer-times')
+        return { success: true }
+    } catch (error) {
+        console.error('Error in updatePrayerTimes:', error)
+        if (error instanceof Error && error.message === 'User not authenticated') {
+            revalidatePath('/login')
+            return {
+                success: false,
+                error: 'Authentication required. Please log in again.'
+            }
+        }
+        return {
+            success: false,
+            error: 'An unexpected error occurred. Please try again.'
+        }
     }
-
-    const { data: mosque, error: mosqueError } = await supabase
-    .from('mosques')
-    .update({
-        jummah_times: jummahTimes
-    })
-    .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
-
-    if (mosqueError) {
-        console.log('mosque update error')
-        return { error: mosqueError.message }
-    }
-
-    revalidatePath('/dashboard/prayer-times')
-    return { success: true }
 }
 
-export async function updatePrayerSettings(settings: any) {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-        revalidatePath('/login')
-        throw new Error('Authentication required')
+export async function updateJummahTimes(jummahTimes: any[]): Promise<ActionResult> {
+    try {
+        // Validate jummah times
+        const validation = validateJummahTimes(jummahTimes)
+        if (!validation.isValid) {
+            return {
+                success: false,
+                errors: validation.errors
+            }
+        }
+
+        const user = await getCurrentUser()
+        const supabase = await createClient()
+
+        const { error: updateError } = await supabase
+            .from('mosques')
+            .update({
+                jummah_times: jummahTimes
+            })
+            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+
+        if (updateError) {
+            console.error('Error updating jummah times:', updateError)
+            return {
+                success: false,
+                error: 'Failed to update Jummah times. Please try again.'
+            }
+        }
+
+        revalidatePath('/dashboard/prayer-times')
+        return { success: true }
+    } catch (error) {
+        console.error('Error in updateJummahTimes:', error)
+        if (error instanceof Error && error.message === 'User not authenticated') {
+            revalidatePath('/login')
+            return {
+                success: false,
+                error: 'Authentication required. Please log in again.'
+            }
+        }
+        return {
+            success: false,
+            error: 'An unexpected error occurred. Please try again.'
+        }
     }
-
-    const { data: mosque, error: mosqueError } = await supabase
-    .from('mosques')
-    .update({
-        prayer_settings: settings
-    })
-    .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
-
-    if (mosqueError) {
-        console.log('mosque settings update error')
-        return { error: mosqueError.message }
-    }
-
-    revalidatePath('/dashboard/prayer-times')
-    return { success: true }
 }
 
-export async function getMosqueSettings() {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-        revalidatePath('/login')
-        throw new Error('Authentication required')
+export async function updatePrayerSettings(settings: any): Promise<ActionResult> {
+    try {
+        const user = await getCurrentUser()
+        const supabase = await createClient()
+
+        const { error: updateError } = await supabase
+            .from('mosques')
+            .update({
+                prayer_settings: settings
+            })
+            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+
+        if (updateError) {
+            console.error('Error updating prayer settings:', updateError)
+            return {
+                success: false,
+                error: 'Failed to update prayer settings. Please try again.'
+            }
+        }
+
+        revalidatePath('/dashboard/prayer-times')
+        return { success: true }
+    } catch (error) {
+        console.error('Error in updatePrayerSettings:', error)
+        if (error instanceof Error && error.message === 'User not authenticated') {
+            revalidatePath('/login')
+            return {
+                success: false,
+                error: 'Authentication required. Please log in again.'
+            }
+        }
+        return {
+            success: false,
+            error: 'An unexpected error occurred. Please try again.'
+        }
     }
+}
 
-    const { data: mosque, error: mosqueError } = await supabase
-    .from('mosques')
-    .select('jummah_times, prayer_settings')
-    .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
-    .single()
+export async function getMosqueSettings(): Promise<ActionResult> {
+    try {
+        const user = await getCurrentUser()
+        const supabase = await createClient()
 
-    if (mosqueError) {
-        console.log('mosque settings fetch error')
-        return { error: mosqueError.message }
+        const { data: mosque, error: mosqueError } = await supabase
+            .from('mosques')
+            .select('jummah_times, prayer_settings')
+            .eq('id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+            .single()
+
+        if (mosqueError) {
+            console.error('Error fetching mosque settings:', mosqueError)
+            return {
+                success: false,
+                error: 'Failed to fetch mosque settings. Please try again.'
+            }
+        }
+
+        return { success: true, data: mosque }
+    } catch (error) {
+        console.error('Error in getMosqueSettings:', error)
+        if (error instanceof Error && error.message === 'User not authenticated') {
+            revalidatePath('/login')
+            return {
+                success: false,
+                error: 'Authentication required. Please log in again.'
+            }
+        }
+        return {
+            success: false,
+            error: 'An unexpected error occurred. Please try again.'
+        }
     }
-
-    return mosque
 }
