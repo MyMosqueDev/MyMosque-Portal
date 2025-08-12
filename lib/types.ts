@@ -1,12 +1,14 @@
 export type User = {
-    id: string | number
+    id: string
     email: string
 }
 
 export type MosqueInfo = {
     name: string;
     id: string;
+    uid: string;
     address: string;
+    email: string;
     images?: string[] | null;
     coordinates: {
         latitude: number;

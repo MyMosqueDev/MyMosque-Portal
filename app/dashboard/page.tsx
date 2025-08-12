@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useUser({setUser})
-  useMosque({mosqueId: user?.id || 0, setMosque: setMosque})
+  useMosque({mosqueId: user?.id || '', setMosque: setMosque})
   
   if(!mosque || !mosque.announcements || !mosque.events || !mosque.prayerTimes || !mosque.info) {
     return (
@@ -72,7 +72,7 @@ export default function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, Nueces Mosque</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {mosque.info.name}</h1>
           <p className="text-gray-600">{"Here's what's happening with your community today."}</p>
         </div>
 

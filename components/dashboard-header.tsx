@@ -9,18 +9,37 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Settings, LogOut, User } from "lucide-react"
+import { LogOut, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-
+import { supabase } from "@/utils/supabase/client"
+import { useState } from "react"
+import useMosqueInfo from "@/hooks/useMosqueInfo"
+import { MosqueInfo as MosqueInfoType } from "@/lib/types"
 export function DashboardHeader() {
   const router = useRouter()
+  const [mosqueInfo, setMosqueInfo] = useState<MosqueInfoType | null>(null)
+  useMosqueInfo({setMosqueInfo: setMosqueInfo})
 
-  const handleLogout = () => {
-    // In a real app, you'd clear auth tokens here
-    router.push("/")
+  const handleLogout = async () => {
+    try {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('Error during logout:', error)
+        return
+      }
+      
+      // Clear local storage
+      localStorage.removeItem('authenticatedUser')
+      
+      // Redirect to login page
+      router.push("/")
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   return (
@@ -64,23 +83,24 @@ export function DashboardHeader() {
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Mosque Admin" />
-                    <AvatarFallback>NM</AvatarFallback>
-                  </Avatar>
+                <Button variant="ghost" className="relative h-12 w-12 rounded-full [&_svg]:!size-6">
+                  <User className="h-12 w-12"/>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">Nueces Mosque</p>
-                    <p className="text-xs leading-none text-muted-foreground">admin@nuecesmosque.org</p>
+                    <p className="text-sm font-medium leading-none">
+                      {mosqueInfo?.name == null ? "Loading..." : mosqueInfo?.name || "Unknown Mosque"}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {mosqueInfo?.email || "No email Found"}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile">
+                {/* <DropdownMenuSeparator /> */}
+                {/* <DropdownMenuItem asChild> */}
+                  {/* <Link href="/dashboard/profile">
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </Link>
@@ -90,7 +110,7 @@ export function DashboardHeader() {
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </Link>
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />

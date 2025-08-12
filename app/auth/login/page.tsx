@@ -24,7 +24,7 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
-          const result = await login({ email, password })
+      const result = await login({ email, password })
       if (result.error) {
         console.error(result.error)
         setError("Invalid email or password. Please try again.")

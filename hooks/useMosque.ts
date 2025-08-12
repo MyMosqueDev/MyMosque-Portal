@@ -2,31 +2,29 @@ import { useEffect, useState } from "react"
 import { MosqueData } from "@/lib/types"
 import { supabase } from "@/utils/supabase/client"
 
-export const useMosque = ({mosqueId, setMosque}: {mosqueId: string | number, setMosque: (mosque: MosqueData) => void}) => {
+export const useMosque = ({mosqueId, setMosque}: {mosqueId: string , setMosque: (mosque: MosqueData) => void}) => {
     useEffect(() => {
         const fetchMosque = async () => {
             if (mosqueId) {
-                
-                const [events, announcements, prayerTimes, mosqueInfo] = await Promise.all([
-                    getMosqueEvents(),
-                    getMosqueAnnouncements(),
-                    getMosquePrayerTimes(),
-                    getMosqueInfo()
-                ])
-
-                setMosque({
-                    info: mosqueInfo,
-                    announcements: announcements || [],
-                    events: events || [],
-                    prayerTimes: prayerTimes || []
-                } as MosqueData)
+                    const [events, announcements, prayerTimes, mosqueInfo] = await Promise.all([
+                        getMosqueEvents(),
+                        getMosqueAnnouncements(),
+                        getMosquePrayerTimes(),
+                        getMosqueInfo()
+                    ])
+                    setMosque({
+                        info: mosqueInfo,
+                        announcements: announcements || [],
+                        events: events || [],
+                        prayerTimes: prayerTimes || []
+                    } as MosqueData)
             }
         }
         fetchMosque()
     }, [mosqueId])
 
     const getMosqueInfo = async () => {
-        const { data, error } = await supabase.from('mosques').select('*').eq('id', mosqueId).single()
+        const { data, error } = await supabase.from('mosques').select('*').eq('uid', mosqueId).single()
         if (error) {
             console.error('Error fetching mosque info:', error)
         } else {
