@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
-import { Event, EventFormData } from "@/lib/types";
+import { EventFormData } from "@/lib/types";
 
 async function createClient() {
     const cookieStore = await cookies();

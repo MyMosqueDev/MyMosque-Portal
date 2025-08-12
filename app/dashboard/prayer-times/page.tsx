@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,89 +10,155 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, Plus, Trash2, Settings, Bell, Save } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { DashboardHeader } from "@/components/dashboard-header"
-
-interface DateRangePrayerTimes {
-  id: string
-  name: string
-  startDate: string
-  endDate: string
-  prayerTimes: {
-    fajr: string
-    sunrise: string
-    dhuhr: string
-    asr: string
-    maghrib: string
-    isha: string
-  }
-  timeMode: {
-    fajr: "static" | "increment"
-    sunrise: "static" | "increment"
-    dhuhr: "static" | "increment"
-    asr: "static" | "increment"
-    maghrib: "static" | "increment"
-    isha: "static" | "increment"
-  }
-  incrementValues: {
-    fajr: number
-    sunrise: number
-    dhuhr: number
-    asr: number
-    maghrib: number
-    isha: number
-  }
-}
+import { DateRangePrayerTimes } from "@/lib/types"
+import { createPrayerTimes, getPrayerTimes, deletePrayerTimes, updatePrayerTimes, updateJummahTimes, updatePrayerSettings, getMosqueSettings } from "./actions"
 
 export default function PrayerTimesPage() {
-  const [dateRanges, setDateRanges] = useState<DateRangePrayerTimes[]>([
+  const [dateRanges, setDateRanges] = useState<DateRangePrayerTimes[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null)
+
+  const [activeSchedule, setActiveSchedule] = useState("")
+
+  // Load prayer times on component mount
+  useEffect(() => {
+    const loadPrayerTimes = async () => {
+      try {
+        setIsLoadingData(true)
+        const prayerTimes = await getPrayerTimes()
+        
+        if (prayerTimes && !('error' in prayerTimes)) {
+            const transformedData = prayerTimes.map((item: any) => ({
+              id: item.id?.toString(),
+              name: item.name,
+              startDate: item.startDate ? new Date(item.startDate).toISOString().split('T')[0] : "",
+              endDate: item.endDate ? new Date(item.endDate).toISOString().split('T')[0] : "",
+              status: item.status,
+            prayerTimes: {
+              fajr: item.prayerTimes?.fajr,
+              dhuhr: item.prayerTimes?.dhuhr,
+              asr: item.prayerTimes?.asr,
+              maghrib: item.prayerTimes?.maghrib,
+              isha: item.prayerTimes?.isha,
+            },
+            timeMode: {
+              fajr: item.timeMode?.fajr,
+              dhuhr: item.timeMode?.dhuhr,
+              asr: item.timeMode?.asr,
+              maghrib: item.timeMode?.maghrib,
+              isha: item.timeMode?.isha,
+            },
+            incrementValues: {
+              fajr: item.incrementValues?.fajr,
+              dhuhr: item.incrementValues?.dhuhr,
+              asr: item.incrementValues?.asr,
+              maghrib: item.incrementValues?.maghrib,
+              isha: item.incrementValues?.isha,
+            },
+          }))
+          
+          setDateRanges(transformedData)
+          console.log(transformedData[0].startDate)
+          console.log(transformedData[0].endDate)
+          // Set the first schedule as active if we have data
+          if (transformedData.length > 0) {
+            setActiveSchedule(transformedData[0].id)
+          }
+        } else {
+          console.error('Error loading prayer times:', prayerTimes)
+          // Set default empty state
+          setDateRanges([])
+        }
+      } catch (error) {
+        console.error('Error loading prayer times:', error)
+        setDateRanges([])
+      } finally {
+        setIsLoadingData(false)
+      }
+    }
+
+    loadPrayerTimes()
+  }, [])
+
+  // Load mosque settings (jummah times and prayer settings)
+  useEffect(() => {
+    const loadMosqueSettings = async () => {
+      try {
+        const mosqueData = await getMosqueSettings()
+        
+        if (mosqueData && !('error' in mosqueData)) {
+          // Load jummah times if they exist
+          if (mosqueData.jummah_times && Array.isArray(mosqueData.jummah_times)) {
+            setJummahTimes(mosqueData.jummah_times)
+          }
+          
+          // Load prayer settings if they exist
+          if (mosqueData.prayer_settings) {
+            setSettings(prevSettings => ({
+              ...prevSettings,
+              ...mosqueData.prayer_settings
+            }))
+          }
+        }
+      } catch (error) {
+        console.error('Error loading mosque settings:', error)
+      }
+    }
+
+    if (!isLoadingData) {
+      loadMosqueSettings()
+    }
+  }, [isLoadingData])
+
+  const [jummahTimes, setJummahTimes] = useState([
     {
       id: "1",
-      name: "Default Schedule",
-      startDate: "2025-08-01",
-      endDate: "2025-08-31",
-      prayerTimes: {
-        fajr: "05:30",
-        sunrise: "07:00",
-        dhuhr: "12:30",
-        asr: "15:45",
-        maghrib: "18:15",
-        isha: "19:30",
-      },
-      timeMode: {
-        fajr: "static",
-        sunrise: "static",
-        dhuhr: "static",
-        asr: "static",
-        maghrib: "static",
-        isha: "static",
-      },
-      incrementValues: {
-        fajr: 0,
-        sunrise: 0,
-        dhuhr: 0,
-        asr: 0,
-        maghrib: 0,
-        isha: 0,
-      },
+      name: "First Jummah",
+      athan: "01:30",
+      iqama: "01:45",
     },
+    {
+      id: "2", 
+      name: "Second Jummah",
+      athan: "02:30",
+      iqama: "02:45",
+    }
   ])
-
-  const [activeSchedule, setActiveSchedule] = useState("1")
-
-  const [jummahTimes, setJummahTimes] = useState({
-    first: "1:30",
-    second: "2:30",
-  })
 
   const [settings, setSettings] = useState({
     autoUpdate: true,
     sendNotifications: true,
     adjustForDST: true,
+    hanafiAsr: false,
     calculationMethod: "ISNA",
   })
 
   const [isLoading, setIsLoading] = useState(false)
   const [autoCalculate, setAutoCalculate] = useState(true)
+
+  // Check if a date range overlaps with existing schedules
+  const hasDateOverlap = (startDate: string, endDate: string, excludeId?: string) => {
+    if (!startDate || !endDate) return false
+    
+    const newStart = new Date(startDate)
+    const newEnd = new Date(endDate)
+    
+    return dateRanges.some(range => {
+      // Skip the range we're updating (if provided)
+      if (excludeId && range.id === excludeId) return false
+      
+      if (!range.startDate || !range.endDate) return false
+      
+      const existingStart = new Date(range.startDate)
+      const existingEnd = new Date(range.endDate)
+      
+      // Check for overlap: new range overlaps if it starts before existing ends AND ends after existing starts
+      return newStart <= existingEnd && newEnd >= existingStart
+    })
+  }
 
   const addDateRange = () => {
     const newRange: DateRangePrayerTimes = {
@@ -100,9 +166,9 @@ export default function PrayerTimesPage() {
       name: `Schedule ${dateRanges.length + 1}`,
       startDate: "",
       endDate: "",
+      status: "active",
       prayerTimes: {
         fajr: "05:30",
-        sunrise: "07:00",
         dhuhr: "12:30",
         asr: "15:45",
         maghrib: "18:15",
@@ -110,7 +176,6 @@ export default function PrayerTimesPage() {
       },
       timeMode: {
         fajr: "static",
-        sunrise: "static",
         dhuhr: "static",
         asr: "static",
         maghrib: "static",
@@ -118,7 +183,6 @@ export default function PrayerTimesPage() {
       },
       incrementValues: {
         fajr: 0,
-        sunrise: 0,
         dhuhr: 0,
         asr: 0,
         maghrib: 0,
@@ -130,17 +194,50 @@ export default function PrayerTimesPage() {
   }
 
   const removeDateRange = (id: string) => {
-    if (dateRanges.length > 1) {
-      const newRanges = dateRanges.filter((range) => range.id !== id)
+    setScheduleToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (scheduleToDelete && dateRanges.length > 1) {
+      const newRanges = dateRanges.filter((range) => range.id !== scheduleToDelete)
+      deletePrayerTimes(scheduleToDelete)
       setDateRanges(newRanges)
-      if (activeSchedule === id) {
+      if (activeSchedule === scheduleToDelete) {
         setActiveSchedule(newRanges[0].id)
       }
     }
+    setDeleteDialogOpen(false)
+    setScheduleToDelete(null)
+  }
+
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false)
+    setScheduleToDelete(null)
   }
 
   const updateDateRange = (id: string, field: string, value: string) => {
-    setDateRanges((ranges) => ranges.map((range) => (range.id === id ? { ...range, [field]: value } : range)))
+    setDateRanges((ranges) => {
+      const updatedRanges = ranges.map((range) => {
+        if (range.id === id) {
+          const updatedRange = { ...range, [field]: value }
+          
+          // Check for date overlaps when updating start or end dates
+          if ((field === 'startDate' || field === 'endDate') && 
+              updatedRange.startDate && updatedRange.endDate) {
+            if (hasDateOverlap(updatedRange.startDate, updatedRange.endDate, id)) {
+              // Show warning or handle overlap - for now, we'll just log it
+              console.warn('Date overlap detected! This schedule overlaps with another existing schedule.')
+              // You could add a toast notification here
+            }
+          }
+          
+          return updatedRange
+        }
+        return range
+      })
+      return updatedRanges
+    })
   }
 
   const handlePrayerTimeChange = (rangeId: string, prayer: string, time: string) => {
@@ -209,10 +306,61 @@ export default function PrayerTimesPage() {
 
   const handleSave = async () => {
     setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
+    
+    // Find the currently active schedule
+    const currentSchedule = dateRanges.find(range => range.id === activeSchedule)
+    
+    if (!currentSchedule) {
+      console.error('No active schedule found')
       setIsLoading(false)
-    }, 1000)
+      return
+    }
+    
+    // Check for date overlaps before saving
+    if (currentSchedule.startDate && currentSchedule.endDate && 
+        hasDateOverlap(currentSchedule.startDate, currentSchedule.endDate, currentSchedule.id)) {
+      console.error('Cannot save schedule with overlapping dates')
+      alert('Cannot save schedule: Date range overlaps with another schedule. Please adjust the dates.')
+      setIsLoading(false)
+      return
+    }
+    
+    console.log('Saving current schedule:', currentSchedule)
+    
+    try {
+      // Check if this is an existing schedule (has a numeric ID from database) or new schedule
+      const isExistingSchedule = currentSchedule.id && !isNaN(Number(currentSchedule.id)) && Number(currentSchedule.id) > 0
+      
+      let result
+      if (isExistingSchedule) {
+        console.log('Updating existing schedule with ID:', currentSchedule.id)
+        result = await updatePrayerTimes(currentSchedule.id, currentSchedule)
+      } else {
+        console.log('Creating new schedule')
+        result = await createPrayerTimes(currentSchedule)
+      }
+      
+      if (result.success) {
+        console.log('Schedule saved successfully')
+        
+        // Also save jummah times and settings
+        try {
+          await updateJummahTimes(jummahTimes)
+          await updatePrayerSettings(settings)
+          console.log('Jummah times and settings saved successfully')
+        } catch (settingsError) {
+          console.error('Error saving jummah times or settings:', settingsError)
+        }
+        
+        setIsLoading(false)
+      } else {
+        console.error('Failed to save schedule:', result.error)
+        setIsLoading(false)
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error)
+      setIsLoading(false)
+    }
   }
 
   const handleAutoCalculate = async () => {
@@ -233,8 +381,29 @@ export default function PrayerTimesPage() {
     }, 1500)
   }
 
-  const handleJummahTimeChange = (field: string, value: string) => {
-    setJummahTimes((prevTimes) => ({ ...prevTimes, [field]: value }))
+  const handleJummahTimeChange = (id: string, field: string, value: string) => {
+    setJummahTimes((prevTimes) => 
+      prevTimes.map(time => 
+        time.id === id ? { ...time, [field]: value } : time
+      )
+    )
+  }
+
+  const addJummahTime = () => {
+    const newId = Date.now().toString()
+    const newTime = {
+      id: newId,
+      name: `Jummah ${jummahTimes.length + 1}`,
+      athan: "1:30",
+      iqama: "1:45",
+    }
+    setJummahTimes([...jummahTimes, newTime])
+  }
+
+  const removeJummahTime = (id: string) => {
+    if (jummahTimes.length > 1) {
+      setJummahTimes(jummahTimes.filter(time => time.id !== id))
+    }
   }
 
   const handleSettingChange = (field: string, value: boolean | string) => {
@@ -294,6 +463,43 @@ export default function PrayerTimesPage() {
   const heatMapData = generateHeatMapData()
   const currentMonth = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })
 
+    // Show loading state while fetching data
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader />
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mosque-green mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading prayer schedules...</p>
+                      </div>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{dateRanges.find(range => range.id === scheduleToDelete)?.name || 'this schedule'}"?
+              <br /><br />
+              This action cannot be undone and will permanently remove this prayer schedule.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Delete Schedule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader />
@@ -308,7 +514,7 @@ export default function PrayerTimesPage() {
           <div className="flex items-center space-x-3">
             <Button onClick={handleAutoCalculate} variant="outline" disabled={isLoading}>
               <Bell className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-              Auto Calculate
+              Export
             </Button>
             <Button onClick={handleSave} className="bg-mosque-green hover:bg-mosque-green-light" disabled={isLoading}>
             <Save className="h-4 w-4 mr-2" />   
@@ -320,6 +526,21 @@ export default function PrayerTimesPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Prayer Times with Dropdown */}
           <div className="lg:col-span-2 space-y-6">
+            {dateRanges.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="text-center">
+                    <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Prayer Schedules Found</h3>
+                    <p className="text-gray-600 mb-6">Create your first prayer schedule to get started.</p>
+                    <Button onClick={addDateRange} className="bg-mosque-green hover:bg-mosque-green-light">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create First Schedule
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -374,6 +595,27 @@ export default function PrayerTimesPage() {
                       <div key={range.id} className="space-y-6">
                         {/* Date Range Configuration */}
                         <div className="grid md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                          {range.startDate && range.endDate && hasDateOverlap(range.startDate, range.endDate, range.id) && (
+                            <div className="md:col-span-3 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                                <div className="ml-3">
+                                  <h3 className="text-sm font-medium text-yellow-800">
+                                    Date Overlap Warning
+                                  </h3>
+                                  <div className="mt-2 text-sm text-yellow-700">
+                                    <p>
+                                      This schedule overlaps with another existing schedule. Please adjust the dates to avoid conflicts.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           <div className="space-y-2">
                             <Label htmlFor={`name-${range.id}`}>Schedule Name</Label>
                             <Input
@@ -465,6 +707,7 @@ export default function PrayerTimesPage() {
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* Jummah Times - Outside of tabs */}
             <Card>
@@ -476,31 +719,59 @@ export default function PrayerTimesPage() {
                 <CardDescription>Friday prayer times for your mosque (applies to all schedules)</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="first-jummah" className="text-base font-medium">
-                      First Jummah
-                    </Label>
-                    <Input
-                      id="first-jummah"
-                      type="time"
-                      value={jummahTimes.first}
-                      onChange={(e) => handleJummahTimeChange("first", e.target.value)}
-                      className="text-lg font-mono"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="second-jummah" className="text-base font-medium">
-                      Second Jummah
-                    </Label>
-                    <Input
-                      id="second-jummah"
-                      type="time"
-                      value={jummahTimes.second}
-                      onChange={(e) => handleJummahTimeChange("second", e.target.value)}
-                      className="text-lg font-mono"
-                    />
-                  </div>
+                <div className="space-y-4">
+                  {jummahTimes.map((jummah) => (
+                    <div key={jummah.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-base font-medium">{jummah.name}</Label>
+                        {jummahTimes.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeJummahTime(jummah.id)}
+                            className="text-red-600 hover:bg-red-50 h-6 w-6 p-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`athan-${jummah.id}`} className="text-sm">
+                            Athan Time
+                          </Label>
+                          <Input
+                            id={`athan-${jummah.id}`}
+                            type="time"
+                            value={jummah.athan}
+                            onChange={(e) => handleJummahTimeChange(jummah.id, "athan", e.target.value)}
+                            className="text-sm font-mono"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`iqama-${jummah.id}`} className="text-sm">
+                            Iqama Time
+                          </Label>
+                          <Input
+                            id={`iqama-${jummah.id}`}
+                            type="time"
+                            value={jummah.iqama}
+                            onChange={(e) => handleJummahTimeChange(jummah.id, "iqama", e.target.value)}
+                            className="text-sm font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    onClick={addJummahTime}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Jummah Time
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -554,20 +825,9 @@ export default function PrayerTimesPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Auto-calculation</span>
-                  <Badge variant={autoCalculate ? "default" : "secondary"}>
-                    {autoCalculate ? "Enabled" : "Disabled"}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Active Schedules</span>
                   <Badge variant="outline">{dateRanges.length}</Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Next Prayer</span>
-                  <span className="text-sm font-medium">Maghrib in 2h 15m</span>
-                </div>
-
                 <div className="pt-4 border-t">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium">Prayer Time Coverage</span>
@@ -632,15 +892,13 @@ export default function PrayerTimesPage() {
                                       {isFriday && (
                                         <div className="pt-1 border-t border-gray-200">
                                           <div className="text-xs text-gray-500 font-medium">Jummah Times:</div>
-                                          <div className="grid grid-cols-2 gap-x-4 text-xs">
-                                            <div className="flex justify-between">
-                                              <span className="text-gray-600">First:</span>
-                                              <span className="font-mono font-medium">{jummahTimes.first}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                              <span className="text-gray-600">Second:</span>
-                                              <span className="font-mono font-medium">{jummahTimes.second}</span>
-                                            </div>
+                                          <div className="space-y-1 text-xs">
+                                            {jummahTimes.map((jummah) => (
+                                              <div key={jummah.id} className="flex justify-between">
+                                                <span className="text-gray-600">{jummah.name}:</span>
+                                                <span className="font-mono font-medium">{jummah.athan} (Athan) / {jummah.iqama} (Iqama)</span>
+                                              </div>
+                                            ))}
                                           </div>
                                         </div>
                                       )}
@@ -680,7 +938,7 @@ export default function PrayerTimesPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Auto Update</Label>
                     <p className="text-sm text-gray-500">Automatically calculate prayer times</p>
@@ -689,9 +947,9 @@ export default function PrayerTimesPage() {
                     checked={settings.autoUpdate}
                     onCheckedChange={(checked) => handleSettingChange("autoUpdate", checked)}
                   />
-                </div>
+                </div> */}
 
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Send Notifications</Label>
                     <p className="text-sm text-gray-500">Notify community of time changes</p>
@@ -700,16 +958,16 @@ export default function PrayerTimesPage() {
                     checked={settings.sendNotifications}
                     onCheckedChange={(checked) => handleSettingChange("sendNotifications", checked)}
                   />
-                </div>
+                </div> */}
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Daylight Saving</Label>
-                    <p className="text-sm text-gray-500">Adjust for daylight saving time</p>
+                    <Label>Hanafi Asr Times</Label>
+                    <p className="text-sm text-gray-500">Use Hanafi calculation method for Asr prayer times</p>
                   </div>
                   <Switch
-                    checked={settings.adjustForDST}
-                    onCheckedChange={(checked) => handleSettingChange("adjustForDST", checked)}
+                    checked={settings.hanafiAsr}
+                    onCheckedChange={(checked) => handleSettingChange("hanafiAsr", checked)}
                   />
                 </div>
 
@@ -730,25 +988,29 @@ export default function PrayerTimesPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Next Prayer */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Next Prayer</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-mosque-green mb-1">Maghrib</div>
-                  <div className="text-lg font-mono text-gray-600 mb-2">
-                    {activeRange ? calculateFinalTime(activeRange, "maghrib") : "18:15"} PM
-                  </div>
-                  <div className="text-sm text-gray-500">in 2 hours 30 minutes</div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{dateRanges.find(range => range.id === scheduleToDelete)?.name || 'this schedule'}"?
+              <br /><br />
+              This action cannot be undone and will permanently remove this prayer schedule.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Delete Schedule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
