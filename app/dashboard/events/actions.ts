@@ -271,6 +271,13 @@ export async function deleteEvent(id: string) {
             throw new Error('Failed to delete event')
         }
 
+        await supabase
+            .from('mosques')
+            .update({
+                last_event: new Date().toISOString()
+            })
+            .eq('uid', user.id)
+
         // Optionally delete the image from storage
         if (event.image) {
             try {

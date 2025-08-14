@@ -236,11 +236,19 @@ export async function deleteAnnouncement(id: string) {
             updated_at: new Date().toISOString()
         })
         .eq('id', id)
-        .eq('masjid_id', user.id === '8b8e68c7-4d65-4f39-8baa-b4687eef861e' ? 1 : user.id)
+        .eq('masjid_id', user.id)
 
         if (deleteError) {
             throw new Error('Failed to delete announcement')
         }
+
+        // Update mosque last_announcement timestamp
+        await supabase
+            .from('mosques')
+            .update({
+                last_announcement: new Date().toISOString()
+            })
+            .eq('id', user.id)
 
         revalidatePath('/dashboard/announcements')
         
