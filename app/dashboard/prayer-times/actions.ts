@@ -271,7 +271,7 @@ export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes):
         const { error: mosqueUpdateError } = await supabase
             .from('mosques')
             .update({
-                last_prayer_time: new Date().toISOString()
+                last_prayer: new Date().toISOString()
             })
             .eq('uid', user.id)
 
