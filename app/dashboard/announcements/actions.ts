@@ -182,17 +182,17 @@ export async function updateAnnouncement(id: string, data: { title: string; cont
         .select()
         .single()
 
-        if (updateError) {
-            throw new Error('Failed to update announcement')
-        }
-
         // Update mosque last_announcement timestamp
         await supabase
         .from('mosques')
         .update({
             last_announcement: new Date().toISOString()
         })
-        .eq('id', user.id)
+        .eq('uid', user.id)
+
+        if (updateError) {
+            throw new Error('Failed to update announcement')
+        }
 
         revalidatePath('/dashboard/announcements')
         
@@ -248,7 +248,7 @@ export async function deleteAnnouncement(id: string) {
             .update({
                 last_announcement: new Date().toISOString()
             })
-            .eq('id', user.id)
+            .eq('uid', user.id)
 
         revalidatePath('/dashboard/announcements')
         
