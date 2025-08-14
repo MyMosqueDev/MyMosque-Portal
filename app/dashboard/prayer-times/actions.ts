@@ -250,7 +250,8 @@ export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes):
         const sanitizedName = sanitizeInput(dataWithoutIsNew.name)
         const sanitizedData = {
             ...dataWithoutIsNew,
-            name: sanitizedName
+            name: sanitizedName,
+            updated_at: new Date().toISOString()
         }
 
         const { error: updateError } = await supabase
