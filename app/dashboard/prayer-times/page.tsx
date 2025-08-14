@@ -38,18 +38,8 @@ export default function PrayerTimesPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [jummahTimes, setJummahTimes] = useState<JummahTime[]>([
-    {
-      id: "1",
-      name: "First Jummah",
-      athan: "13:30",
-      iqama: "13:45",
-    },
-    {
-      id: "2", 
-      name: "Second Jummah",
-      athan: "14:30",
-      iqama: "14:45",
-    }
+    {"id": "1", "name": "First Jummah", "athan": "13:30", "iqama": "13:45"}, 
+    {"id": "2", "name": "Second Jummah", "athan": "14:30", "iqama": "14:45"}
   ])
 
   const [settings, setSettings] = useState<PrayerSettings>({

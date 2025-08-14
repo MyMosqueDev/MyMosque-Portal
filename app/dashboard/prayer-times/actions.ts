@@ -311,10 +311,16 @@ export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<Acti
         const user = await getCurrentUser()
         const supabase = await createClient()
 
+        // Transform array to object format for database storage
+        const jummahTimesObject = jummahTimes.reduce((acc, time, index) => {
+            acc[`jummah${index + 1}`] = time
+            return acc
+        }, {} as Record<string, JummahTime>)
+
         const { error: updateError } = await supabase
             .from('mosques')
             .update({
-                jummah_times: jummahTimes
+                jummah_times: jummahTimesObject
             })
             .eq('uid', user.id)
 
@@ -399,6 +405,11 @@ export async function getMosqueSettings(): Promise<ActionResult> {
                 success: false,
                 error: 'Failed to fetch mosque settings. Please try again.'
             }
+        }
+
+        // Transform jummah_times from object format back to array if it exists
+        if (mosque?.jummah_times && typeof mosque.jummah_times === 'object' && !Array.isArray(mosque.jummah_times)) {
+            mosque.jummah_times = Object.values(mosque.jummah_times)
         }
 
         return { success: true, data: mosque }
