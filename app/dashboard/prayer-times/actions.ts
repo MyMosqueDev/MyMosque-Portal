@@ -1,64 +1,22 @@
 'use server'
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
 import { DateRangePrayerTimes, JummahTime, PrayerSettings } from "@/lib/types";
 import { validatePrayerSchedule, validateJummahTimes } from "@/lib/validation";
+import { createSupabaseClient, getCurrentUser } from "@/lib/supabase";
 
 interface ActionResult {
-  success: boolean;
-  error?: string;
-  errors?: Array<{ field: string; message: string }>;
-  data?: any;
-}
-
-async function createClient() {
-    const cookieStore = await cookies();
-
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }, 
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                        cookieStore.set(name, value, options)
-                        )
-                    } catch (error) {
-                        console.error('Error setting cookies:', error)
-                    }
-                }
-            }
-        }
-    )
-}
-
-async function getCurrentUser() {
-    const supabase = await createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError) {
-        console.error('Authentication error:', userError)
-        throw new Error('Authentication failed')
-    }
-    
-    if (!user) {
-        throw new Error('User not authenticated')
-    }
-    
-    return user
+    success: boolean;
+    error?: string;
+    errors?: Array<{ field: string; message: string }>;
+    data?: any;
 }
 
 export async function getPrayerTimes(): Promise<ActionResult> {
     try {
-        const user = await getCurrentUser()
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         const { data: prayerTimes, error: prayerTimesError } = await supabase
             .from('test_prayer_times')
@@ -105,9 +63,8 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
             }
         }
 
-        const user = await getCurrentUser()
-        console.log('user', user.id)
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         // Check if mosque exists
         const { error: mosqueError } = await supabase
@@ -167,8 +124,8 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
 
 export async function deletePrayerTimes(id: string): Promise<ActionResult> {
     try {
-        const user = await getCurrentUser()
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         // Verify the schedule belongs to the user's mosque
         const { data: existingSchedule, error: fetchError } = await supabase
@@ -227,8 +184,8 @@ export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes):
             }
         }
 
-        const user = await getCurrentUser()
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         // Verify the schedule belongs to the user's mosque
         const { data: existingSchedule, error: fetchError } = await supabase
@@ -309,8 +266,8 @@ export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<Acti
             }
         }
 
-        const user = await getCurrentUser()
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         // Transform array to object format for database storage
         const jummahTimesObject = jummahTimes.reduce((acc, time, index) => {
@@ -353,8 +310,8 @@ export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<Acti
 
 export async function updatePrayerSettings(settings: PrayerSettings): Promise<ActionResult> {
     try {
-        const user = await getCurrentUser()
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         const { error: updateError } = await supabase
             .from('mosques')
@@ -391,8 +348,8 @@ export async function updatePrayerSettings(settings: PrayerSettings): Promise<Ac
 
 export async function getMosqueSettings(): Promise<ActionResult> {
     try {
-        const user = await getCurrentUser()
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         const { data: mosque, error: mosqueError } = await supabase
             .from('mosques')

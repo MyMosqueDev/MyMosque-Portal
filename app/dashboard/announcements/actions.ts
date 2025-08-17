@@ -1,38 +1,12 @@
 'use server'
 
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { Announcement } from '@/lib/types'
+import { Announcement, User } from '@/lib/types'
 import { sanitizeInput } from '@/lib/utils'
+import { createSupabaseClient, getCurrentUser } from '@/lib/supabase'
+import { SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
 
-// Create server-side Supabase client
-async function createClient() {
-    const cookieStore = await cookies()
-
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-        cookies: {
-            getAll() {
-            return cookieStore.getAll()
-            },
-            setAll(cookiesToSet) {
-            try {
-                cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-                )
-            } catch {
-                console.log('Error setting cookies')
-            }
-            },
-        },
-        }
-    )
-}
-
-// Input validation
+// validate announcement data
 function validateAnnouncement(data: { title: string; content: string; priority: string }) {
     const errors: string[] = []
     
@@ -57,13 +31,10 @@ function validateAnnouncement(data: { title: string; content: string; priority: 
 
 export async function getAnnouncements() {
     try {
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
         
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-            throw new Error('Authentication required')
-        }
+        const user = await getCurrentUser(supabase);
+
         // Fetch announcements with ownership check
         const { data, error } = await supabase
         .from('announcements')
@@ -82,9 +53,33 @@ export async function getAnnouncements() {
     }
 }
 
+async function verifyAnnouncementOwnership(supabase: SupabaseClient, id: string, user: SupabaseUser) {
+    const {data: announcement, error: fetchError} = await supabase
+        .from('announcements')
+        .select('masjid_id')
+        .eq('id', id)
+        .single()
+    if (fetchError || !announcement) {
+        throw new Error('Announcement not found')
+    }
+    if (announcement.masjid_id !== user.id) {
+        throw new Error('You do not have permission to edit this announcement')
+    }
+}
+
+async function updateMosqueLastAnnouncement(supabase: SupabaseClient, user: SupabaseUser) {
+    await supabase
+        .from('mosques')
+        .update({
+            last_announcement: new Date().toISOString()
+        })
+        .eq('uid', user.id)
+}
+
 export async function newAnnouncement(announcement: Announcement) {
     try {
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient();
+        const user = await getCurrentUser(supabase);
         
         const validationErrors = validateAnnouncement({
             title: announcement.title,
@@ -94,12 +89,6 @@ export async function newAnnouncement(announcement: Announcement) {
 
         if (validationErrors.length > 0) {
             throw new Error(validationErrors.join(', '))
-        }
-
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-        if (userError || !user) {
-            throw new Error('Authentication required')
         }
 
         const sanitizedData = {
@@ -116,12 +105,7 @@ export async function newAnnouncement(announcement: Announcement) {
             .select()
             .single()
         
-        await supabase
-        .from('mosques')
-        .update({
-            last_announcement: new Date().toISOString()
-        })
-        .eq('uid', user?.id)
+        await updateMosqueLastAnnouncement(supabase, user)
 
         if (createError) {
             throw new Error('Failed to create announcement')
@@ -135,7 +119,8 @@ export async function newAnnouncement(announcement: Announcement) {
 
 export async function updateAnnouncement(id: string, data: { title: string; content: string; priority: string }) {
     try {
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient();
+        const user = await getCurrentUser(supabase);
         
         // Validate input
         const validationErrors = validateAnnouncement(data)
@@ -143,27 +128,7 @@ export async function updateAnnouncement(id: string, data: { title: string; cont
             throw new Error(validationErrors.join(', '))
         }
 
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !user) {
-        throw new Error('Authentication required')
-        }
-
-        // Verify ownership
-        const { data: announcement, error: fetchError } = await supabase
-        .from('announcements')
-        .select('masjid_id')
-        .eq('id', id)
-        .single()
-
-        if (fetchError || !announcement) {
-            throw new Error('Announcement not found')
-        }
-
-        if (announcement.masjid_id !== user.id) {
-            throw new Error('You do not have permission to edit this announcement')
-        }
+        await verifyAnnouncementOwnership(supabase, id, user)
 
         // Sanitize inputs
         const sanitizedData = {
@@ -182,13 +147,7 @@ export async function updateAnnouncement(id: string, data: { title: string; cont
         .select()
         .single()
 
-        // Update mosque last_announcement timestamp
-        await supabase
-        .from('mosques')
-        .update({
-            last_announcement: new Date().toISOString()
-        })
-        .eq('uid', user.id)
+        await updateMosqueLastAnnouncement(supabase, user)
 
         if (updateError) {
             throw new Error('Failed to update announcement')
@@ -204,51 +163,26 @@ export async function updateAnnouncement(id: string, data: { title: string; cont
 
 export async function deleteAnnouncement(id: string) {
     try {
-        const supabase = await createClient()
-        
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !user) {
-            throw new Error('Authentication required')
-        }
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase);
 
-        // Verify ownership
-        const { data: announcement, error: fetchError } = await supabase
-        .from('announcements')
-        .select('masjid_id')
-        .eq('id', id)
-        .single()
-
-        if (fetchError || !announcement) {
-            throw new Error('Announcement not found')
-        }
-
-        if (announcement.masjid_id !== user.id) {
-            throw new Error('You do not have permission to delete this announcement')
-        }
+        await verifyAnnouncementOwnership(supabase, id, user)
 
         // Soft delete
         const { error: deleteError } = await supabase
-        .from('announcements')
-        .update({
-            status: 'deleted',
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('masjid_id', user.id)
+            .from('announcements')
+            .update({
+                status: 'deleted',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('masjid_id', user.id)
 
         if (deleteError) {
             throw new Error('Failed to delete announcement')
         }
 
-        // Update mosque last_announcement timestamp
-        await supabase
-            .from('mosques')
-            .update({
-                last_announcement: new Date().toISOString()
-            })
-            .eq('uid', user.id)
+        await updateMosqueLastAnnouncement(supabase, user)
 
         revalidatePath('/dashboard/announcements')
         
@@ -260,19 +194,13 @@ export async function deleteAnnouncement(id: string) {
 
 export async function createAnnouncement(data: { title: string; content: string; priority: string; status?: string }) {
     try {
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient();
+        const user = await getCurrentUser(supabase);
         
         // Validate input
         const validationErrors = validateAnnouncement(data)
         if (validationErrors.length > 0) {
             throw new Error(validationErrors.join(', '))
-        }
-
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !user) {
-            throw new Error('Authentication required')
         }
 
         // Sanitize inputs
@@ -297,13 +225,7 @@ export async function createAnnouncement(data: { title: string; content: string;
             throw new Error('Failed to create announcement')
         }
 
-        // Update mosque last_announcement timestamp
-        await supabase
-            .from('mosques')
-            .update({
-                last_announcement: new Date().toISOString()
-            })
-            .eq('id', user.id)
+        await updateMosqueLastAnnouncement(supabase, user)
 
         revalidatePath('/dashboard/announcements')
         

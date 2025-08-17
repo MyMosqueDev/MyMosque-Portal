@@ -56,6 +56,7 @@ export type MosqueData = {
 
 export type Event = {
     id: string;
+    masjid_id: string;
     title: string;
     description: string;
     date: string;

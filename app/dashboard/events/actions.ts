@@ -1,35 +1,11 @@
 'use server'
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
 import { EventFormData } from "@/lib/types";
-
-async function createClient() {
-    const cookieStore = await cookies();
-
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }, 
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                        cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        console.log('Error setting cookies')
-                    }
-                }
-            }
-        }
-    )
-}
+import { createSupabaseClient, getCurrentUser } from "@/lib/supabase";
+import { SupabaseClient, User } from "@supabase/supabase-js";
+import { Event } from "@/lib/types";
 
 function validateEvent(data: { title: string; description: string; date: string }) {
     const errors: string[] = []
@@ -53,25 +29,42 @@ function validateEvent(data: { title: string; description: string; date: string 
     return errors
 }
 
+async function verifyEventOwnership(supabase: SupabaseClient, id: string, user: User) {
+    const {data: event, error: fetchError} = await supabase
+        .from('events')
+        .select('masjid_id')
+        .eq('id', id)
+        .single()
+    if (fetchError || !event) {
+        throw new Error('Event not found')
+    }
+    if (event.masjid_id !== user.id) {
+        throw new Error('You do not have permission to edit this event')
+    }
+    return event as Event
+}
+
+async function updateMosqueLastEvent(supabase: SupabaseClient, user: User) {
+    await supabase
+        .from('mosques')
+        .update({
+            last_event: new Date().toISOString()
+        })
+        .eq('uid', user.id)
+}
+
 export async function getEvents() {
     try {
-        console.log('fetching events')
-        const supabase = await createClient()
-
-        // get current user
-        const {data: {user}, error: userError} = await supabase.auth.getUser();
-        if (userError || !user) {
-            revalidatePath('/login')
-            throw new Error('Authentication required')
-        }
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         // fetch events with ownership check
         const {data, error} = await supabase
-        .from('events')
-        .select('*')
-        .eq('masjid_id', user.id)
-        .neq('status', 'deleted')
-        .order('date', { ascending: false })
+            .from('events')
+            .select('*')
+            .eq('masjid_id', user.id)
+            .neq('status', 'deleted')
+            .order('date', { ascending: false })
         if (error) {
             throw new Error('Failed to fetch events')
         }
@@ -84,15 +77,10 @@ export async function getEvents() {
 
 export async function createEvent(event: EventFormData) {
     try {
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
-        // get current user
-        const {data: {user}, error: userError} = await supabase.auth.getUser();
-        if (userError || !user) {
-            revalidatePath('/login')
-            throw new Error('Authentication required')
-        } 
-
+        // if no host, use mosque name
         if (!event.host) {
             const {data: mosque, error: mosqueError} = await supabase
             .from('mosques')
@@ -127,12 +115,14 @@ export async function createEvent(event: EventFormData) {
             created_at: new Date().toISOString(),
         }
 
+        // upload image to supabase storage
         const {error: imageError} = await supabase.storage.from('images')
-        .upload(imageName, event.image as File)
+            .upload(imageName, event.image as File)
         if (imageError) {
             throw new Error(imageError.message)
         }
 
+        // create event
         const {data: newEvent, error: createError} = await supabase
             .from('events')
             .insert(sanitizedEvent)
@@ -140,18 +130,10 @@ export async function createEvent(event: EventFormData) {
             .single()
 
         if (createError) {
-            console.log('create error')
-            console.log(createError.message)
             throw new Error('Failed to create event')
         }
-        console.log(newEvent)
 
-        await supabase
-            .from('mosques')
-            .update({
-                last_event: new Date().toISOString()
-            })
-            .eq('uid', user?.id)
+        await updateMosqueLastEvent(supabase, user);
 
         return { error: null }
         
@@ -162,35 +144,17 @@ export async function createEvent(event: EventFormData) {
 
 export async function updateEvent(id: string, data: { title: string; description: string; date: string; host: string; location: string }) {
     try {
-        const supabase = await createClient()
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
         
-        // Validate input
+        // validate event data
         const validationErrors = validateEvent(data)
         if (validationErrors.length > 0) {
             throw new Error(validationErrors.join(', '))
         }
 
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !user) {
-            throw new Error('Authentication required')
-        }
-
         // Verify ownership
-        const { data: event, error: fetchError } = await supabase
-            .from('events')
-            .select('masjid_id')
-            .eq('id', id)
-            .single()
-
-        if (fetchError || !event) {
-            throw new Error('Event not found')
-        }
-
-        if (event.masjid_id !== user.id) {
-            throw new Error('You do not have permission to edit this event')
-        }
+        await verifyEventOwnership(supabase, id, user)
 
         // Sanitize inputs
         const sanitizedData = {
@@ -215,13 +179,7 @@ export async function updateEvent(id: string, data: { title: string; description
             throw new Error('Failed to update event')
         }
 
-        // Update mosque last_event timestamp
-        await supabase
-            .from('mosques')
-            .update({
-                last_event: new Date().toISOString()
-            })
-            .eq('uid', user.id)
+        await updateMosqueLastEvent(supabase, user);
 
         revalidatePath('/dashboard/events')
         
@@ -233,29 +191,11 @@ export async function updateEvent(id: string, data: { title: string; description
 
 export async function deleteEvent(id: string) {
     try {
-        const supabase = await createClient()
-        
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !user) {
-            throw new Error('Authentication required')
-        }
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
 
         // Verify ownership
-        const { data: event, error: fetchError } = await supabase
-            .from('events')
-            .select('masjid_id, image')
-            .eq('id', id)
-            .single()
-
-        if (fetchError || !event) {
-            throw new Error('Event not found')
-        }
-
-        if (event.masjid_id !== user.id) {
-            throw new Error('You do not have permission to delete this event')
-        }
+        const event: Event = await verifyEventOwnership(supabase, id, user)
 
         // Soft delete
         const { error: deleteError } = await supabase
@@ -271,12 +211,7 @@ export async function deleteEvent(id: string) {
             throw new Error('Failed to delete event')
         }
 
-        await supabase
-            .from('mosques')
-            .update({
-                last_event: new Date().toISOString()
-            })
-            .eq('uid', user.id)
+        await updateMosqueLastEvent(supabase, user);
 
         // Optionally delete the image from storage
         if (event.image) {
