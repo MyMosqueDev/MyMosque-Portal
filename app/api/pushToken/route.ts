@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 
 
 export async function GET(request: NextRequest) {
-    console.log('pushToken route get')
     return NextResponse.json({ message: 'Hello from Next.js!' })
 }
 
@@ -25,8 +24,7 @@ export async function POST(request: NextRequest) {
                 .update({
                     events: settings.events.enabled,
                     announcements: settings.announcements.enabled,
-                    prayer_times: settings.prayerTimes.enabled,
-                    prayer_time_settings: settings.prayerTimes.enabled ? settings.prayerTimes : null
+                    prayer_times: false,
                 })
                 .eq('id', existing.id)
                 .select()
@@ -39,8 +37,8 @@ export async function POST(request: NextRequest) {
                     masjid_id: data.mosqueId,
                     events: settings.events.enabled,
                     announcements: settings.announcements.enabled,
-                    prayer_times: settings.prayerTimes.enabled,
-                    prayer_time_settings: settings.prayerTimes.enabled ? settings.prayerTimes : null
+                    prayer_times: false,
+                    prayer_time_settings: null
                 })
                 .select()
                 .single());
