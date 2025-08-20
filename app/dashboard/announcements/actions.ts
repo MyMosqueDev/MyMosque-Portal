@@ -112,16 +112,16 @@ export async function newAnnouncement(announcement: Announcement) {
             throw new Error('Failed to create announcement')
         }
 
-        const somePushTokens = [
-            'ExponentPushToken[IDtnDjONa_qpIemIzqeVZQ]',
-        ];
+        const {data: pushTokens, error: fetchError} = await supabase
+            .from('notifications')
+            .select('push_token')
+            .eq('masjid_id', user.id)
+            .eq('announcements', true);
+
         sendNotifications({
-            pushTokens: somePushTokens,
+            pushTokens: pushTokens,
             title: `${announcement.mosque_name}: ${announcement.title}`,
             body: announcement.description,
-            data: {
-                withSome: 'data'
-            }
         })
         return { data: newAnnouncement, error: null }
     } catch (error) {

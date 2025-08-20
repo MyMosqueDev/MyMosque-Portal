@@ -6,6 +6,7 @@ import { EventFormData } from "@/lib/types";
 import { createSupabaseClient, getCurrentUser } from "@/lib/supabase";
 import { SupabaseClient, User } from "@supabase/supabase-js";
 import { Event } from "@/lib/types";
+import { sendNotifications } from "@/lib/notifications";
 
 function validateEvent(data: { title: string; description: string; date: string }) {
     const errors: string[] = []
@@ -132,6 +133,18 @@ export async function createEvent(event: EventFormData) {
         if (createError) {
             throw new Error('Failed to create event')
         }
+
+        const {data: pushTokens, error: fetchError} = await supabase
+            .from('notifications')
+            .select('push_token')
+            .eq('masjid_id', user.id)
+            .eq('events', true);
+            
+            sendNotifications({
+                pushTokens: pushTokens,
+                title: `${newEvent.host}: ${newEvent.title}`,
+                body: newEvent.description,
+            })
 
         await updateMosqueLastEvent(supabase, user);
 
