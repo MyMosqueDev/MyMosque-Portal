@@ -1,0 +1,52 @@
+import { supabase } from '@/utils/supabase/client'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(request: NextRequest) {
+    const data = await request.json()
+    const settings = JSON.parse(data.settings)
+
+    const { data: existing, error: findError } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('push_token', data.token)
+        .eq('masjid_id', data.mosqueId)
+        .maybeSingle();
+        
+        let notification, notificationError;
+
+        if (existing) {
+            console.log('Updating notification');
+            ({ data: notification, error: notificationError } = await supabase
+                .from('notifications')
+                .update({
+                    events: settings.events.enabled,
+                    announcements: settings.announcements.enabled,
+                    prayer_times: settings.prayerTimes.enabled,
+                    prayer_time_settings: settings.prayerTimes.enabled ? settings.prayerTimes : null
+                })
+                .eq('id', existing.id)
+                .select()
+                .single());
+        } else {
+            console.log('Inserting notification');
+            ({ data: notification, error: notificationError } = await supabase
+                .from('notifications')
+                .insert({
+                    push_token: data.token,
+                    masjid_id: data.mosqueId,
+                    events: settings.events.enabled,
+                    announcements: settings.announcements.enabled,
+                    prayer_times: settings.prayerTimes.enabled,
+                    prayer_time_settings: settings.prayerTimes.enabled ? settings.prayerTimes : null
+                })
+                .select()
+                .single());
+        }
+
+    if (notificationError) {
+        console.error('Database error fetching prayer times:', notificationError)
+        return NextResponse.json({ message: 'Error fetching prayer times' }, { status: 500 })
+    }
+
+    return NextResponse.json({ status: 'success' })
+} 

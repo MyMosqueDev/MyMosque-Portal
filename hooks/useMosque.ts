@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { MosqueData } from "@/lib/types"
 import { supabase } from "@/utils/supabase/client"
 

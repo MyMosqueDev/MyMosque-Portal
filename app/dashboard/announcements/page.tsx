@@ -13,8 +13,6 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { useEffect, useState } from "react"
 import { Announcement } from "@/lib/types"
 import { format } from "date-fns"
-import useUser from "@/hooks/useUser"
-import { User } from "@/lib/types"
 import { toast } from "sonner"
 import { getAnnouncements, updateAnnouncement, deleteAnnouncement } from "./actions"
 

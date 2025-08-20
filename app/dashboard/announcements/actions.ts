@@ -5,6 +5,7 @@ import { Announcement, User } from '@/lib/types'
 import { sanitizeInput } from '@/lib/utils'
 import { createSupabaseClient, getCurrentUser } from '@/lib/supabase'
 import { SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
+import { sendNotifications } from '@/lib/notifications';
 
 // validate announcement data
 function validateAnnouncement(data: { title: string; content: string; priority: string }) {
@@ -111,6 +112,17 @@ export async function newAnnouncement(announcement: Announcement) {
             throw new Error('Failed to create announcement')
         }
 
+        const somePushTokens = [
+            'ExponentPushToken[IDtnDjONa_qpIemIzqeVZQ]',
+        ];
+        sendNotifications({
+            pushTokens: somePushTokens,
+            title: `${announcement.mosque_name}: ${announcement.title}`,
+            body: announcement.description,
+            data: {
+                withSome: 'data'
+            }
+        })
         return { data: newAnnouncement, error: null }
     } catch (error) {
         return { data: null, error: error instanceof Error ? error.message : 'Unknown error' }
@@ -140,12 +152,12 @@ export async function updateAnnouncement(id: string, data: { title: string; cont
 
         // Update announcement
         const { data: updatedAnnouncement, error: updateError } = await supabase
-        .from('announcements')
-        .update(sanitizedData)
-        .eq('id', id)
-        .eq('masjid_id', user.id)
-        .select()
-        .single()
+            .from('announcements')
+            .update(sanitizedData)
+            .eq('id', id)
+            .eq('masjid_id', user.id)
+            .select()
+            .single()
 
         await updateMosqueLastAnnouncement(supabase, user)
 

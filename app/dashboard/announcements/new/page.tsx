@@ -15,8 +15,13 @@ import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { Announcement } from "@/lib/types"
 import { newAnnouncement } from "../actions"
+import { MosqueInfo as MosqueInfoType } from "@/lib/types"
+import useMosqueInfo from "@/hooks/useMosqueInfo"
 
 export default function NewAnnouncementPage() {
+  const [mosqueInfo, setMosqueInfo] = useState<MosqueInfoType | null>(null)
+  useMosqueInfo({setMosqueInfo: setMosqueInfo})
+  
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -39,6 +44,7 @@ export default function NewAnnouncementPage() {
       severity: formData.priority as "low" | "medium" | "high",
       status: action === "publish" ? "published" : "draft",
       created_at: new Date().toISOString(),
+      mosque_name: mosqueInfo?.name,
     }
     const { error } = await newAnnouncement(announcement)
     if (error) {

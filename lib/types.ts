@@ -101,6 +101,7 @@ export type Announcement = {
     status: "published" | "draft" | "deleted" | null;
     updated_at?: string;
     masjid_id?: string;
+    mosque_name?: string;
 }
 
 export type DateRangePrayerTimes ={
