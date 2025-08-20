@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const { data: existing, error: findError } = await supabase
         .from('notifications')
         .select('id')
-        .eq('push_token', data.token)
+        .eq('push_token', data.pushToken)
         .eq('masjid_id', data.mosqueId)
         .maybeSingle();
         let notification, notificationError;
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
             ({ data: notification, error: notificationError } = await supabase
                 .from('notifications')
                 .insert({
-                    push_token: data.token,
+                    push_token: data.pushToken,
                     masjid_id: data.mosqueId,
                     events: settings.events.enabled,
                     announcements: settings.announcements.enabled,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     if (notificationError) {
         console.error('Database error fetching prayer times:', notificationError)
-        return NextResponse.json({ message: 'Error fetching prayer times' }, { status: 500 })
+        return NextResponse.json({ message: 'Error updating notification: ' + notificationError.message }, { status: 500 })
     }
 
     return NextResponse.json({ status: 'success' })
