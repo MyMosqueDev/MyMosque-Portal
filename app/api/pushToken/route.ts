@@ -1,6 +1,12 @@
 import { supabase } from '@/utils/supabase/client'
 import { NextRequest, NextResponse } from 'next/server'
 
+
+export async function GET(request: NextRequest) {
+    console.log('pushToken route get')
+    return NextResponse.json({ message: 'Hello from Next.js!' })
+}
+
 export async function POST(request: NextRequest) {
     const data = await request.json()
     const settings = JSON.parse(data.settings)
@@ -11,11 +17,9 @@ export async function POST(request: NextRequest) {
         .eq('push_token', data.token)
         .eq('masjid_id', data.mosqueId)
         .maybeSingle();
-        
         let notification, notificationError;
 
         if (existing) {
-            console.log('Updating notification');
             ({ data: notification, error: notificationError } = await supabase
                 .from('notifications')
                 .update({
@@ -28,7 +32,6 @@ export async function POST(request: NextRequest) {
                 .select()
                 .single());
         } else {
-            console.log('Inserting notification');
             ({ data: notification, error: notificationError } = await supabase
                 .from('notifications')
                 .insert({
