@@ -77,7 +77,7 @@ async function updateMosqueLastAnnouncement(supabase: SupabaseClient, user: Supa
         .eq('uid', user.id)
 }
 
-export async function newAnnouncement(announcement: Announcement) {
+export async function newAnnouncement(announcement: Omit<Announcement, 'image'> & { image?: File | null }) {
     try {
         const supabase = await createSupabaseClient();
         const user = await getCurrentUser(supabase);
@@ -92,12 +92,31 @@ export async function newAnnouncement(announcement: Announcement) {
             throw new Error(validationErrors.join(', '))
         }
 
+        console.log(announcement)
+
+        let imageUrl: string | undefined;
+        
+        // Handle image upload if provided
+        if (announcement.image) {
+            const imageName = `${announcement.title.toLowerCase().replace(/\s+/g, '-') + '-' + new Date().toISOString().split('T')[0]}.jpg`
+            imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${imageName}`
+            console.log(imageUrl)
+            // Upload image to supabase storage
+            const {error: imageError} = await supabase.storage.from('images')
+                .upload(imageName, announcement.image)
+            if (imageError) {
+                console.log(imageError)
+                throw new Error(imageError.message)
+            }
+        }
+
         const sanitizedData = {
             title: sanitizeInput(announcement.title),
             description: sanitizeInput(announcement.description),
             severity: announcement.severity,
             status: announcement.status,
             masjid_id: user?.id,
+            image: imageUrl,
         }
 
         const { data: newAnnouncement, error: createError } = await supabase
@@ -109,7 +128,7 @@ export async function newAnnouncement(announcement: Announcement) {
         await updateMosqueLastAnnouncement(supabase, user)
 
         if (createError) {
-            throw new Error('Failed to create announcement')
+            throw new Error(`Failed to create announcement: ${createError.message}`)
         }
 
         const {data: pushTokens, error: fetchError} = await supabase

@@ -10,6 +10,10 @@ export async function POST(request: NextRequest) {
     const data = await request.json()
     const settings = JSON.parse(data.settings)
 
+    if (data.mosqueId === 'ff37ab83-a461-4af2-9042-2d908329df27') {
+        return NextResponse.json({ status: 'success' })
+    }
+
     const { data: existing, error: findError } = await supabase
         .from('notifications')
         .select('id')

@@ -102,6 +102,7 @@ export type Announcement = {
     updated_at?: string;
     masjid_id?: string;
     mosque_name?: string;
+    image?: string;
 }
 
 export type DateRangePrayerTimes ={

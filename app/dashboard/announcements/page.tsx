@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Bell, Plus, Edit, Trash2, Save } from "lucide-react"
+import { Bell, Plus, Edit, Trash2, Save, Image as ImageIcon } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { useEffect, useState } from "react"
 import { Announcement } from "@/lib/types"
@@ -293,6 +294,21 @@ export default function AnnouncementsPage() {
                           {announcement.status || 'draft'}
                         </Badge>
                       </div>
+                      
+                      {announcement.image && (
+                        <div className="mb-3">
+                          <div className="w-32 h-20 rounded-lg overflow-hidden border border-gray-200">
+                            <Image 
+                              src={announcement.image} 
+                              alt={announcement.title}
+                              width={128}
+                              height={80}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
                       <p className="text-gray-600 mb-3 line-clamp-2">{announcement.description}</p>
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <span>{format(new Date(announcement.created_at), 'MMMM d, yyyy')}</span>

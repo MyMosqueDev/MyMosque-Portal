@@ -9,14 +9,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, Send } from "lucide-react"
+import { ArrowLeft, Save, Send, Upload, Image as ImageIcon } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { Announcement } from "@/lib/types"
 import { newAnnouncement } from "../actions"
 import { MosqueInfo as MosqueInfoType } from "@/lib/types"
 import useMosqueInfo from "@/hooks/useMosqueInfo"
+import { toast } from "sonner"
 
 export default function NewAnnouncementPage() {
   const [mosqueInfo, setMosqueInfo] = useState<MosqueInfoType | null>(null)
@@ -30,6 +32,7 @@ export default function NewAnnouncementPage() {
     schedulePublish: false,
     publishDate: "",
     publishTime: "",
+    image: null as File | null,
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -38,28 +41,49 @@ export default function NewAnnouncementPage() {
     e.preventDefault()
     setIsLoading(true)
     
-    const announcement: Announcement = {
+    const announcementData = {
       title: formData.title,
       description: formData.content,
       severity: formData.priority as "low" | "medium" | "high",
-      status: action === "publish" ? "published" : "draft",
+      status: action === "publish" ? "published" : "draft" as "published" | "draft",
       created_at: new Date().toISOString(),
       mosque_name: mosqueInfo?.name,
+      ...(formData.image && { image: formData.image }),
     }
-    const { error } = await newAnnouncement(announcement)
+    const { error } = await newAnnouncement(announcementData)
     if (error) {
       console.error('Error creating announcement:', error)
     } else {
-
       router.push('/dashboard/announcements')
     }
   }
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string | boolean | File | null) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }))
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Please upload a valid image file (JPEG, PNG, or WebP)")
+        return
+      }
+      
+      // Validate file size
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (file.size > maxSize) {
+        toast.error("Image file size must be less than 5MB")
+        return
+      }
+      
+      handleInputChange("image", file)
+    }
   }
 
   return (
@@ -126,6 +150,28 @@ export default function NewAnnouncementPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="image">Image (Optional)</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-2">Upload an image for your announcement</p>
+                    <p className="text-xs text-gray-500 mb-2">Accepted formats: JPEG, PNG, WebP (max 5MB)</p>
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleImageUpload}
+                      className="max-w-xs mx-auto"
+                    />
+                  </div>
+                  {formData.image && (
+                    <p className="text-sm text-green-600 flex items-center">
+                      <ImageIcon className="h-4 w-4 mr-1" />
+                      Image selected: {formData.image.name} ({(formData.image.size / 1024 / 1024).toFixed(2)}MB)
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="priority">Priority Level</Label>
                   <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
                     <SelectTrigger>
@@ -165,6 +211,21 @@ export default function NewAnnouncementPage() {
                       {formData.priority}
                     </span>
                   </div>
+                  
+                  {formData.image && (
+                    <div className="mb-3">
+                      <div className="w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
+                        <Image 
+                          src={URL.createObjectURL(formData.image)} 
+                          alt="Announcement preview" 
+                          width={400}
+                          height={225}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
                   <p className="text-gray-600 text-sm">
                     {formData.content || "Your announcement content will appear here..."}
                   </p>
