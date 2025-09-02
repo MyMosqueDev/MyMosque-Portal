@@ -86,13 +86,9 @@ export default function NewEventPage() {
     if (!formData.date) {
       newErrors.date = "Event date is required"
     } else {
-      const selectedDate = new Date(formData.date)
       const today = new Date()
       today.setHours(0, 0, 0, 0) // Reset time to start of day
       
-      if (selectedDate < today) {
-        newErrors.date = "Event date must be in the future"
-      }
     }
 
     // Time validation
