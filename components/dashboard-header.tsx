@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, User } from "lucide-react"
+import { LogOut, User, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -17,9 +17,11 @@ import { supabase } from "@/utils/supabase/client"
 import { useState } from "react"
 import useMosqueInfo from "@/hooks/useMosqueInfo"
 import { MosqueInfo as MosqueInfoType } from "@/lib/types"
+
 export function DashboardHeader() {
   const router = useRouter()
   const [mosqueInfo, setMosqueInfo] = useState<MosqueInfoType | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   useMosqueInfo({setMosqueInfo: setMosqueInfo})
 
   const handleLogout = async () => {
@@ -42,49 +44,49 @@ export function DashboardHeader() {
     }
   }
 
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen)
+  }
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false)
+  }
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center space-x-2 absolute left-20">
+          <Link href="/dashboard" className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
               <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
             </div>
-            <span className="text-xl font-bold text-gray-900">MyMosque</span>
+            <span className="text-lg md:text-xl font-bold text-gray-900">MyMosque</span>
           </Link>
 
-          {/* Navigation */}
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link href="/dashboard" className="text-gray-700 hover:text-mosque-blue font-medium">
+            <Link href="/dashboard" className="text-gray-700 hover:text-mosque-blue font-medium transition-colors">
               Dashboard
             </Link>
-            <Link href="/dashboard/announcements" className="text-gray-700 hover:text-mosque-blue font-medium">
+            <Link href="/dashboard/announcements" className="text-gray-700 hover:text-mosque-blue font-medium transition-colors">
               Announcements
             </Link>
-            <Link href="/dashboard/events" className="text-gray-700 hover:text-mosque-blue font-medium">
+            <Link href="/dashboard/events" className="text-gray-700 hover:text-mosque-blue font-medium transition-colors">
               Events
             </Link>
-            <Link href="/dashboard/prayer-times" className="text-gray-700 hover:text-mosque-blue font-medium">
+            <Link href="/dashboard/prayer-times" className="text-gray-700 hover:text-mosque-blue font-medium transition-colors">
               Prayer Times
             </Link>
           </nav>
 
           {/* Right side actions */}
-          <div className="flex items-center space-x-4 absolute right-20">
-            {/* Notifications */}
-            {/* <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                3
-              </span>
-            </Button> */}
-
+          <div className="flex items-center space-x-4">
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-12 w-12 rounded-full [&_svg]:!size-6">
-                  <User className="h-12 w-12"/>
+                <Button variant="ghost" className="relative h-10 w-10 md:h-12 md:w-12 rounded-full [&_svg]:!size-5 md:[&_svg]:!size-6">
+                  <User className="h-5 w-5 md:h-6 md:w-6"/>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -98,19 +100,6 @@ export function DashboardHeader() {
                     </p>
                   </div>
                 </DropdownMenuLabel>
-                {/* <DropdownMenuSeparator /> */}
-                {/* <DropdownMenuItem asChild> */}
-                  {/* <Link href="/dashboard/profile">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem> */}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -118,8 +107,54 @@ export function DashboardHeader() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleMobileMenu}
+              className="md:hidden p-2"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 bg-white mt-4 py-4">
+            <nav className="flex flex-col space-y-2">
+              <Link 
+                href="/dashboard" 
+                className="px-4 py-2 text-gray-700 hover:text-mosque-blue hover:bg-gray-50 rounded-lg transition-colors"
+                onClick={closeMobileMenu}
+              >
+                Dashboard
+              </Link>
+              <Link 
+                href="/dashboard/announcements" 
+                className="px-4 py-2 text-gray-700 hover:text-mosque-blue hover:bg-gray-50 rounded-lg transition-colors"
+                onClick={closeMobileMenu}
+              >
+                Announcements
+              </Link>
+              <Link 
+                href="/dashboard/events" 
+                className="px-4 py-2 text-gray-700 hover:text-mosque-blue hover:bg-gray-50 rounded-lg transition-colors"
+                onClick={closeMobileMenu}
+              >
+                Events
+              </Link>
+              <Link 
+                href="/dashboard/prayer-times" 
+                className="px-4 py-2 text-gray-700 hover:text-mosque-blue hover:bg-gray-50 rounded-lg transition-colors"
+                onClick={closeMobileMenu}
+              >
+                Prayer Times
+              </Link>
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   )

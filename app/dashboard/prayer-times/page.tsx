@@ -279,7 +279,7 @@ export default function PrayerTimesPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <DashboardHeader />
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="text-red-500 mb-4">
@@ -288,10 +288,10 @@ export default function PrayerTimesPage() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
-              <p className="text-gray-600 mb-6">{error}</p>
+              <p className="text-sm md:text-base text-gray-600 mb-6">{error}</p>
               <Button 
                 onClick={() => window.location.reload()} 
-                className="bg-mosque-green hover:bg-mosque-green-light"
+                className="bg-mosque-green hover:bg-mosque-green-light h-10 md:h-11 text-sm md:text-base"
               >
                 Try Again
               </Button>
@@ -306,17 +306,17 @@ export default function PrayerTimesPage() {
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Prayer Times</h1>
-            <p className="text-gray-600">Manage prayer times for your mosque</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Prayer Times</h1>
+            <p className="text-sm md:text-base text-gray-600">Manage prayer times for your mosque</p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" disabled>
+                <Button variant="outline" disabled className="h-10 md:h-11 text-sm md:text-base">
                   <Bell className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -327,7 +327,7 @@ export default function PrayerTimesPage() {
             </Tooltip>
             <Button 
               onClick={handleSave} 
-              className="bg-mosque-green hover:bg-mosque-green-light" 
+              className="bg-mosque-green hover:bg-mosque-green-light h-10 md:h-11 text-sm md:text-base" 
               disabled={isLoading}
             >
               <Save className="h-4 w-4 mr-2" />   
@@ -336,9 +336,9 @@ export default function PrayerTimesPage() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           {/* Prayer Times with Dropdown */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             <ScheduleForm
               dateRanges={dateRanges}
               activeSchedule={activeSchedule}
@@ -360,7 +360,7 @@ export default function PrayerTimesPage() {
           </div>
 
           {/* Settings Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             <StatusHeatmap
               dateRanges={dateRanges}
               jummahTimes={jummahTimes}
@@ -377,10 +377,10 @@ export default function PrayerTimesPage() {
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 shadow-xl">
+          <div className="bg-white rounded-lg p-6 md:p-8 shadow-xl mx-4">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mosque-green mx-auto mb-4"></div>
-              <p className="text-gray-600">Saving changes...</p>
+              <p className="text-gray-600 text-sm md:text-base">Saving changes...</p>
             </div>
           </div>
         </div>

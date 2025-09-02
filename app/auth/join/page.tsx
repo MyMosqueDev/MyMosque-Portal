@@ -44,30 +44,30 @@ export default function JoinPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white py-8 md:py-12 px-4">
       <div className="container mx-auto max-w-2xl">
         {/* Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
+        <div className="text-center mb-6 md:mb-8">
+          <Link href="/" className="inline-flex items-center space-x-2 mb-4 md:mb-6">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
               <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
             </div>
-            <span className="text-xl font-bold text-gray-900">MyMosque</span>
+            <span className="text-lg md:text-xl font-bold text-gray-900">MyMosque</span>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Join MyMosque</h1>
-          <p className="text-gray-600">Connect your mosque with your community</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Join MyMosque</h1>
+          <p className="text-sm md:text-base text-gray-600">Connect your mosque with your community</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Register Your Mosque</CardTitle>
-            <CardDescription>Fill out the information below to get started with MyMosque</CardDescription>
+        <Card className="shadow-lg">
+          <CardHeader className="pb-4 md:pb-6">
+            <CardTitle className="text-lg md:text-xl">Register Your Mosque</CardTitle>
+            <CardDescription className="text-sm md:text-base">Fill out the information below to get started with MyMosque</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
+          <CardContent className="space-y-4 md:space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mosqueName">Mosque Name *</Label>
+                  <Label htmlFor="mosqueName" className="text-sm md:text-base">Mosque Name *</Label>
                   <Input
                     id="mosqueName"
                     name="mosqueName"
@@ -75,11 +75,12 @@ export default function JoinPage() {
                     value={formData.mosqueName}
                     onChange={handleInputChange}
                     required
+                    className="h-10 md:h-11 text-sm md:text-base"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
+                  <Label htmlFor="email" className="text-sm md:text-base">Email Address *</Label>
                   <Input
                     id="email"
                     name="email"
@@ -88,13 +89,14 @@ export default function JoinPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
+                    className="h-10 md:h-11 text-sm md:text-base"
                   />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
+                  <Label htmlFor="password" className="text-sm md:text-base">Password *</Label>
                   <Input
                     id="password"
                     name="password"
@@ -102,11 +104,12 @@ export default function JoinPage() {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
+                    className="h-10 md:h-11 text-sm md:text-base"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                  <Label htmlFor="confirmPassword" className="text-sm md:text-base">Confirm Password *</Label>
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -114,23 +117,25 @@ export default function JoinPage() {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     required
+                    className="h-10 md:h-11 text-sm md:text-base"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address" className="text-sm md:text-base">Address</Label>
                 <Input
                   id="address"
                   name="address"
                   placeholder="123 Main St, City, State 12345"
                   value={formData.address}
                   onChange={handleInputChange}
+                  className="h-10 md:h-11 text-sm md:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone" className="text-sm md:text-base">Phone Number</Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -138,11 +143,12 @@ export default function JoinPage() {
                   placeholder="(555) 123-4567"
                   value={formData.phone}
                   onChange={handleInputChange}
+                  className="h-10 md:h-11 text-sm md:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">About Your Mosque</Label>
+                <Label htmlFor="description" className="text-sm md:text-base">About Your Mosque</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -150,15 +156,16 @@ export default function JoinPage() {
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={4}
+                  className="text-sm md:text-base resize-none"
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-mosque-green hover:bg-mosque-green-light" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-mosque-green hover:bg-mosque-green-light h-10 md:h-11 text-sm md:text-base" disabled={isLoading}>
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-4 md:mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Already have an account?{" "}
                 <Link href="/auth/login" className="text-mosque-blue hover:text-mosque-blue-light font-medium">
@@ -168,8 +175,8 @@ export default function JoinPage() {
             </div>
 
             {/* Demo Notice */}
-            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="mt-4 md:mt-6 p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs md:text-sm text-blue-800">
                 <strong>Demo Mode:</strong> Fill out any information to continue to the dashboard.
               </p>
             </div>

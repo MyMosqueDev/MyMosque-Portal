@@ -37,29 +37,29 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
+        <div className="text-center mb-6 md:mb-8">
+          <Link href="/" className="inline-flex items-center space-x-2 mb-4 md:mb-6">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
               <Image src="/images/logo.png" alt="MyMosque Logo" width={32} height={32} className="w-full h-full object-contain" />
             </div>
-            <span className="text-xl font-bold text-gray-900">MyMosque</span>
+            <span className="text-lg md:text-xl font-bold text-gray-900">MyMosque</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your mosque dashboard</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-sm md:text-base text-gray-600">Sign in to your mosque dashboard</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>Enter your credentials to access your mosque dashboard</CardDescription>
+        <Card className="shadow-lg">
+          <CardHeader className="pb-4 md:pb-6">
+            <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
+            <CardDescription className="text-sm md:text-base">Enter your credentials to access your mosque dashboard</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+          <CardContent className="space-y-4 md:space-y-6">
+            <form onSubmit={handleLogin} className="space-y-4 md:space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm md:text-base">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -67,17 +67,19 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="h-10 md:h-11 text-sm md:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm md:text-base">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="h-10 md:h-11 text-sm md:text-base"
                 />
               </div>
 
@@ -87,12 +89,12 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" className="w-full bg-mosque-green hover:bg-mosque-green-light" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-mosque-green hover:bg-mosque-green-light h-10 md:h-11 text-sm md:text-base" disabled={isLoading}>
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-4 md:mt-6 text-center">
               <p className="text-sm text-gray-600">
                 {"Don't have an account? "}
                 <Link href="/auth/join" className="text-mosque-blue hover:text-mosque-blue-light font-medium">
@@ -102,8 +104,8 @@ export default function LoginPage() {
             </div>
 
             {/* Demo Notice */}
-            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="mt-4 md:mt-6 p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs md:text-sm text-blue-800">
                 <strong>Demo Mode:</strong> Enter any email and password to continue to the dashboard.
               </p>
             </div>

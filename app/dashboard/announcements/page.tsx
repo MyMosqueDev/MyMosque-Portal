@@ -183,7 +183,7 @@ export default function AnnouncementsPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <DashboardHeader />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mosque-green mx-auto mb-4"></div>
@@ -199,15 +199,15 @@ export default function AnnouncementsPage() {
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 md:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Announcements</h1>
-            <p className="text-gray-600">Manage your community announcements and updates</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Announcements</h1>
+            <p className="text-sm md:text-base text-gray-600">Manage your community announcements and updates</p>
           </div>
           <Link href="/dashboard/announcements/new">
-            <Button className="bg-mosque-green hover:bg-mosque-green-light">
+            <Button className="bg-mosque-green hover:bg-mosque-green-light w-full sm:w-auto h-10 md:h-11 text-sm md:text-base">
               <Plus className="h-4 w-4 mr-2" />
               New Announcement
             </Button>
@@ -215,27 +215,27 @@ export default function AnnouncementsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 md:pt-6">
               <div className="flex items-center">
-                <Bell className="h-8 w-8 text-mosque-blue" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">{announcements.length}</p>
+                <Bell className="h-6 w-6 md:h-8 md:w-8 text-mosque-blue" />
+                <div className="ml-3 md:ml-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Total</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">{announcements.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 md:pt-6">
               <div className="flex items-center">
-                <div className="h-8 w-8 bg-mosque-green/10 rounded-full flex items-center justify-center">
-                  <div className="h-3 w-3 bg-mosque-green rounded-full"></div>
+                <div className="h-6 w-6 md:h-8 md:w-8 bg-mosque-green/10 rounded-full flex items-center justify-center">
+                  <div className="h-2 w-2 md:h-3 md:w-3 bg-mosque-green rounded-full"></div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Published</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="ml-3 md:ml-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Published</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">
                     {announcements.filter(a => a.status === 'published').length}
                   </p>
                 </div>
@@ -243,14 +243,14 @@ export default function AnnouncementsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 md:pt-6">
               <div className="flex items-center">
-                <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <div className="h-3 w-3 bg-gray-400 rounded-full"></div>
+                <div className="h-6 w-6 md:h-8 md:w-8 bg-gray-100 rounded-full flex items-center justify-center">
+                  <div className="h-2 w-2 md:h-3 md:w-3 bg-gray-400 rounded-full"></div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Drafts</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="ml-3 md:ml-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Drafts</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">
                     {announcements.filter(a => a.status === 'draft' || a.status === null).length}
                   </p>
                 </div>
@@ -261,43 +261,45 @@ export default function AnnouncementsPage() {
 
         {/* Announcements List */}
         <Card>
-          <CardHeader>
-            <CardTitle>All Announcements</CardTitle>
-            <CardDescription>Manage and monitor your community announcements</CardDescription>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg md:text-xl">All Announcements</CardTitle>
+            <CardDescription className="text-sm md:text-base">Manage and monitor your community announcements</CardDescription>
           </CardHeader>
           <CardContent>
             {announcements.length === 0 ? (
               <div className="text-center py-8">
                 <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No announcements yet</p>
+                <p className="text-gray-600 text-sm md:text-base">No announcements yet</p>
                 <Link href="/dashboard/announcements/new">
-                  <Button className="mt-4 bg-mosque-green hover:bg-mosque-green-light">
+                  <Button className="mt-4 bg-mosque-green hover:bg-mosque-green-light h-10 md:h-11 text-sm md:text-base">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Your First Announcement
                   </Button>
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {announcements
                   .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
                   .map((announcement) => (
                   <div
                     key={announcement.id}
-                    className="flex items-start justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-start justify-between p-3 md:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors space-y-3 sm:space-y-0"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-gray-900">{announcement.title}</h3>
-                        <Badge className={getPriorityColor(announcement.severity)}>{announcement.severity}</Badge>
-                        <Badge className={getStatusColor(announcement.status === null ? 'draft' : announcement.status )}>
-                          {announcement.status || 'draft'}
-                        </Badge>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
+                        <h3 className="font-semibold text-gray-900 text-sm md:text-base truncate">{announcement.title}</h3>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge className={`${getPriorityColor(announcement.severity)} text-xs`}>{announcement.severity}</Badge>
+                          <Badge className={`${getStatusColor(announcement.status === null ? 'draft' : announcement.status )} text-xs`}>
+                            {announcement.status || 'draft'}
+                          </Badge>
+                        </div>
                       </div>
                       
                       {announcement.image && (
                         <div className="mb-3">
-                          <div className="w-32 h-20 rounded-lg overflow-hidden border border-gray-200">
+                          <div className="w-full sm:w-32 h-20 rounded-lg overflow-hidden border border-gray-200">
                             <Image 
                               src={announcement.image} 
                               alt={announcement.title}
@@ -309,19 +311,19 @@ export default function AnnouncementsPage() {
                         </div>
                       )}
                       
-                      <p className="text-gray-600 mb-3 line-clamp-2">{announcement.description}</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <p className="text-gray-600 mb-3 line-clamp-2 text-sm md:text-base">{announcement.description}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-xs md:text-sm text-gray-500">
                         <span>{format(new Date(announcement.created_at), 'MMMM d, yyyy')}</span>
                         {announcement.updated_at && announcement.updated_at !== announcement.created_at && (
                           <span className="text-gray-500/75 italic">Edited {format(new Date(announcement.updated_at), 'MMMM d, yyyy')}</span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 ml-4">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(announcement)}>
+                    <div className="flex items-center space-x-2 sm:ml-4 self-end sm:self-start">
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(announcement)} className="h-8 w-8 p-0">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => openDeleteDialog(announcement)}>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 h-8 w-8 p-0" onClick={() => openDeleteDialog(announcement)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -335,18 +337,18 @@ export default function AnnouncementsPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md mx-4">
           <DialogHeader>
-            <DialogTitle>Delete Announcement</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg md:text-xl">Delete Announcement</DialogTitle>
+            <DialogDescription className="text-sm md:text-base">
               Are you sure you want to delete &quot;{announcementToDelete?.title}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelDelete}>
+          <DialogFooter className="flex-col sm:flex-row space-y-2 sm:space-y-0">
+            <Button variant="outline" onClick={cancelDelete} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button variant="destructive" onClick={confirmDelete} className="w-full sm:w-auto">
               Delete
             </Button>
           </DialogFooter>
@@ -355,10 +357,10 @@ export default function AnnouncementsPage() {
 
       {/* Edit Announcement Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
           <DialogHeader>
-            <DialogTitle>Edit Announcement</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg md:text-xl">Edit Announcement</DialogTitle>
+            <DialogDescription className="text-sm md:text-base">
               Update your announcement details
             </DialogDescription>
           </DialogHeader>
@@ -367,7 +369,7 @@ export default function AnnouncementsPage() {
             {/* Main Form */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-title">Title *</Label>
+                <Label htmlFor="edit-title" className="text-sm md:text-base">Title *</Label>
                 <Input
                   id="edit-title"
                   placeholder="Enter announcement title..."
@@ -375,12 +377,13 @@ export default function AnnouncementsPage() {
                   onChange={(e) => handleEditInputChange("title", e.target.value)}
                   required
                   maxLength={100}
+                  className="h-10 md:h-11 text-sm md:text-base"
                 />
-                <p className="text-sm text-gray-500">{editFormData.title.length}/100 characters</p>
+                <p className="text-xs md:text-sm text-gray-500">{editFormData.title.length}/100 characters</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-content">Content *</Label>
+                <Label htmlFor="edit-content" className="text-sm md:text-base">Content *</Label>
                 <Textarea
                   id="edit-content"
                   placeholder="Write your announcement content here..."
@@ -389,14 +392,15 @@ export default function AnnouncementsPage() {
                   rows={6}
                   required
                   maxLength={500}
+                  className="text-sm md:text-base resize-none"
                 />
-                <p className="text-sm text-gray-500">{editFormData.content.length}/500 characters</p>
+                <p className="text-xs md:text-sm text-gray-500">{editFormData.content.length}/500 characters</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-priority">Priority Level</Label>
+                <Label htmlFor="edit-priority" className="text-sm md:text-base">Priority Level</Label>
                 <Select value={editFormData.priority} onValueChange={(value) => handleEditInputChange("priority", value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 md:h-11 text-sm md:text-base">
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
@@ -412,10 +416,10 @@ export default function AnnouncementsPage() {
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <h4 className="font-semibold text-sm mb-2">Preview</h4>
               <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <h5 className="font-semibold text-gray-900 text-sm">{editFormData.title || "Announcement Title"}</h5>
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                  <h5 className="font-semibold text-gray-900 text-sm truncate">{editFormData.title || "Announcement Title"}</h5>
                   <span
-                    className={`px-2 py-1 text-xs rounded-full ${
+                    className={`px-2 py-1 text-xs rounded-full w-fit ${
                       editFormData.priority === "high"
                         ? "bg-red-100 text-red-800"
                         : editFormData.priority === "medium"
@@ -434,13 +438,13 @@ export default function AnnouncementsPage() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelEdit}>
+          <DialogFooter className="flex-col sm:flex-row space-y-2 sm:space-y-0">
+            <Button variant="outline" onClick={cancelEdit} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               onClick={handleEditSubmit}
-              className="bg-mosque-green hover:bg-mosque-green-light"
+              className="bg-mosque-green hover:bg-mosque-green-light w-full sm:w-auto"
               disabled={isEditLoading || !editFormData.title || !editFormData.content}
             >
               <Save className="h-4 w-4 mr-2" />

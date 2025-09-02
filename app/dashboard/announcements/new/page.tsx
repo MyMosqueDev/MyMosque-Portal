@@ -90,54 +90,55 @@ export default function NewAnnouncementPage() {
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 md:py-8">
         {/* Header */}
-        <div className="flex items-center mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6 md:mb-8 space-y-4 sm:space-y-0">
           <Link href="/dashboard/announcements">
-            <Button variant="ghost" size="sm" className="mr-4">
+            <Button variant="ghost" size="sm" className="mr-0 sm:mr-4 h-10 md:h-11 text-sm md:text-base">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">New Announcement</h1>
-            <p className="text-gray-600">Create a new announcement for your community</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">New Announcement</h1>
+            <p className="text-sm md:text-base text-gray-600">Create a new announcement for your community</p>
           </div>
         </div>
 
         {isLoading && (
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-8 shadow-xl">
+            <div className="bg-white rounded-lg p-6 md:p-8 shadow-xl mx-4">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mosque-green mx-auto mb-4"></div>
-                <p className="text-gray-600">Creating announcement...</p>
+                <p className="text-gray-600 text-sm md:text-base">Creating announcement...</p>
               </div>
             </div>
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           {/* Main Form */}
           <div className="lg:col-span-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Announcement Details</CardTitle>
-                <CardDescription>Fill in the information for your announcement</CardDescription>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl">Announcement Details</CardTitle>
+                <CardDescription className="text-sm md:text-base">Fill in the information for your announcement</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 md:space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Title *</Label>
+                  <Label htmlFor="title" className="text-sm md:text-base">Title *</Label>
                   <Input
                     id="title"
                     placeholder="Enter announcement title..."
                     value={formData.title}
                     onChange={(e) => handleInputChange("title", e.target.value)}
                     required
+                    className="h-10 md:h-11 text-sm md:text-base"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="content">Content *</Label>
+                  <Label htmlFor="content" className="text-sm md:text-base">Content *</Label>
                   <Textarea
                     id="content"
                     placeholder="Write your announcement content here..."
@@ -145,15 +146,16 @@ export default function NewAnnouncementPage() {
                     onChange={(e) => handleInputChange("content", e.target.value)}
                     rows={8}
                     required
+                    className="text-sm md:text-base resize-none"
                   />
-                  <p className="text-sm text-gray-500">{formData.content.length}/500 characters</p>
+                  <p className="text-xs md:text-sm text-gray-500">{formData.content.length}/500 characters</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="image">Image (Optional)</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">Upload an image for your announcement</p>
+                  <Label htmlFor="image" className="text-sm md:text-base">Image (Optional)</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 md:p-6 text-center">
+                    <Upload className="h-6 w-6 md:h-8 md:w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-xs md:text-sm text-gray-600 mb-2">Upload an image for your announcement</p>
                     <p className="text-xs text-gray-500 mb-2">Accepted formats: JPEG, PNG, WebP (max 5MB)</p>
                     <Input
                       id="image"
@@ -164,7 +166,7 @@ export default function NewAnnouncementPage() {
                     />
                   </div>
                   {formData.image && (
-                    <p className="text-sm text-green-600 flex items-center">
+                    <p className="text-xs md:text-sm text-green-600 flex items-center">
                       <ImageIcon className="h-4 w-4 mr-1" />
                       Image selected: {formData.image.name} ({(formData.image.size / 1024 / 1024).toFixed(2)}MB)
                     </p>
@@ -172,9 +174,9 @@ export default function NewAnnouncementPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="priority">Priority Level</Label>
+                  <Label htmlFor="priority" className="text-sm md:text-base">Priority Level</Label>
                   <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10 md:h-11 text-sm md:text-base">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -189,18 +191,18 @@ export default function NewAnnouncementPage() {
           </div>
 
           {/* Settings Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Preview */}
             <Card>
-              <CardHeader>
-                <CardTitle>Preview</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl">Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <h4 className="font-semibold text-gray-900">{formData.title || "Announcement Title"}</h4>
+                <div className="border border-gray-200 rounded-lg p-3 md:p-4 bg-gray-50">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-2">
+                    <h4 className="font-semibold text-gray-900 text-sm md:text-base truncate">{formData.title || "Announcement Title"}</h4>
                     <span
-                      className={`px-2 py-1 text-xs rounded-full ${
+                      className={`px-2 py-1 text-xs rounded-full w-fit ${
                         formData.priority === "high"
                           ? "bg-red-100 text-red-800"
                           : formData.priority === "medium"
@@ -226,7 +228,7 @@ export default function NewAnnouncementPage() {
                     </div>
                   )}
                   
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-gray-600 text-xs md:text-sm">
                     {formData.content || "Your announcement content will appear here..."}
                   </p>
                   <p className="text-xs text-gray-500 mt-2">Nueces Mosque • Just now</p>
@@ -238,7 +240,7 @@ export default function NewAnnouncementPage() {
             <div className="space-y-3">
               <Button
                 onClick={(e) => handleSubmit(e, "publish")}
-                className="w-full bg-mosque-green hover:bg-mosque-green-light"
+                className="w-full bg-mosque-green hover:bg-mosque-green-light h-10 md:h-11 text-sm md:text-base"
                 disabled={isLoading || !formData.title || !formData.content}
               >
                 <Send className="h-4 w-4 mr-2" />
@@ -247,7 +249,7 @@ export default function NewAnnouncementPage() {
               <Button
                 onClick={(e) => handleSubmit(e, "draft")}
                 variant="outline"
-                className="w-full"
+                className="w-full h-10 md:h-11 text-sm md:text-base"
                 disabled={isLoading}
               >
                 <Save className="h-4 w-4 mr-2" />

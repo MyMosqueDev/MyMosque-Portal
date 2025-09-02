@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   title: "MyMosque - Connect Your Community",
   description:
     "Bridge your mosque with your community through real-time announcements, event management, and seamless digital communication.",
-    generator: 'v0.dev'
+    generator: 'v0.dev',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'
 }
 
 export default function RootLayout({
@@ -21,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} antialiased`}>
         <TooltipProvider delayDuration={100}>
           {children}
         </TooltipProvider>

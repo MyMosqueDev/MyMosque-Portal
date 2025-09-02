@@ -246,76 +246,76 @@ export default function NewEventPage() {
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 md:py-8">
         {/* Header */}
-        <div className="flex items-center mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6 md:mb-8 space-y-4 sm:space-y-0">
           <Link href="/dashboard/events">
-            <Button variant="ghost" size="sm" className="mr-4">
+            <Button variant="ghost" size="sm" className="mr-0 sm:mr-4 h-10 md:h-11 text-sm md:text-base">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">New Event</h1>
-            <p className="text-gray-600">Create a new event for your community</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">New Event</h1>
+            <p className="text-sm md:text-base text-gray-600">Create a new event for your community</p>
           </div>
         </div>
 
         {isLoading && (
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-8 shadow-xl">
+            <div className="bg-white rounded-lg p-6 md:p-8 shadow-xl mx-4">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mosque-green mx-auto mb-4"></div>
-                <p className="text-gray-600">Creating event...</p>
+                <p className="text-gray-600 text-sm md:text-base">Creating event...</p>
               </div>
             </div>
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Basic Information */}
             <Card>
-              <CardHeader>
-                <CardTitle>Event Details</CardTitle>
-                <CardDescription>Basic information about your event</CardDescription>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl">Event Details</CardTitle>
+                <CardDescription className="text-sm md:text-base">Basic information about your event</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 md:space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Event Title *</Label>
+                  <Label htmlFor="title" className="text-sm md:text-base">Event Title *</Label>
                   <Input
                     id="title"
                     placeholder="Enter event title..."
                     value={formData.title}
                     onChange={(e) => handleInputChange("title", e.target.value)}
-                    className={errors.title ? "border-red-500 focus:border-red-500" : ""}
+                    className={`h-10 md:h-11 text-sm md:text-base ${errors.title ? "border-red-500 focus:border-red-500" : ""}`}
                     required
                   />
                   {renderError("title")}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description *</Label>
+                  <Label htmlFor="description" className="text-sm md:text-base">Description *</Label>
                   <Textarea
                     id="description"
                     placeholder="Describe your event..."
                     value={formData.description}
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     rows={6}
-                    className={errors.description ? "border-red-500 focus:border-red-500" : ""}
+                    className={`text-sm md:text-base resize-none ${errors.description ? "border-red-500 focus:border-red-500" : ""}`}
                     required
                   />
                   {renderError("description")}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="image">Event Image *</Label>
-                  <div className={`border-2 border-dashed rounded-lg p-6 text-center ${
+                  <Label htmlFor="image" className="text-sm md:text-base">Event Image *</Label>
+                  <div className={`border-2 border-dashed rounded-lg p-4 md:p-6 text-center ${
                     errors.image ? "border-red-500 bg-red-50" : "border-gray-300"
                   }`}>
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">Upload an image for your event</p>
+                    <Upload className="h-6 w-6 md:h-8 md:w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-xs md:text-sm text-gray-600 mb-2">Upload an image for your event</p>
                     <p className="text-xs text-gray-500 mb-2">Accepted formats: JPEG, PNG, WebP (max 5MB)</p>
                     <Input
                       id="image"
@@ -327,7 +327,7 @@ export default function NewEventPage() {
                     />
                   </div>
                   {formData.image && (
-                    <p className="text-sm text-green-600 flex items-center">
+                    <p className="text-xs md:text-sm text-green-600 flex items-center">
                       <ImageIcon className="h-4 w-4 mr-1" />
                       Image selected: {formData.image.name} ({(formData.image.size / 1024 / 1024).toFixed(2)}MB)
                     </p>
@@ -339,59 +339,48 @@ export default function NewEventPage() {
 
             {/* Date & Time */}
             <Card>
-              <CardHeader>
-                <CardTitle>Date & Time</CardTitle>
-                <CardDescription>When will your event take place?</CardDescription>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl">Date & Time</CardTitle>
+                <CardDescription className="text-sm md:text-base">When will your event take place?</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
+              <CardContent className="space-y-4 md:space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date *</Label>
+                    <Label htmlFor="date" className="text-sm md:text-base">Date *</Label>
                     <Input
                       id="date"
                       type="date"
                       value={formData.date}
                       onChange={(e) => handleInputChange("date", e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
-                      className={errors.date ? "border-red-500 focus:border-red-500" : ""}
+                      className={`h-10 md:h-11 text-sm md:text-base ${errors.date ? "border-red-500 focus:border-red-500" : ""}`}
                       required
                     />
                     {renderError("date")}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="startTime">Start Time *</Label>
+                    <Label htmlFor="startTime" className="text-sm md:text-base">Start Time *</Label>
                     <Input
                       id="startTime"
                       type="time"
                       value={formData.startTime}
                       onChange={(e) => handleInputChange("startTime", e.target.value)}
-                      className={errors.startTime ? "border-red-500 focus:border-red-500" : ""}
+                      className={`h-10 md:h-11 text-sm md:text-base ${errors.startTime ? "border-red-500 focus:border-red-500" : ""}`}
                       required
                     />
                     {renderError("startTime")}
                   </div>
                 </div>
 
-                {/* <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Recurring Event</Label>
-                    <p className="text-sm text-gray-500">This event repeats regularly</p>
-                  </div>
-                  <Switch
-                    checked={formData.isRecurring}
-                    onCheckedChange={(checked) => handleInputChange("isRecurring", checked)}
-                  />
-                </div> */}
-
                 {formData.isRecurring && (
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="recurringType">Repeat</Label>
+                      <Label htmlFor="recurringType" className="text-sm md:text-base">Repeat</Label>
                       <select
                         id="recurringType"
                         value={formData.recurringType}
                         onChange={(e) => handleInputChange("recurringType", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-mosque-green"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-mosque-green h-10 md:h-11 text-sm md:text-base"
                       >
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
@@ -400,17 +389,17 @@ export default function NewEventPage() {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="endDate">End Date</Label>
+                      <Label htmlFor="endDate" className="text-sm md:text-base">End Date</Label>
                       <Input
                         id="endDate"
                         type="date"
                         value={formData.endDate}
                         onChange={(e) => handleInputChange("endDate", e.target.value)}
                         min={formData.date}
-                        className="w-full"
+                        className="w-full h-10 md:h-11 text-sm md:text-base"
                         required
                       />
-                      <p className="text-sm text-gray-500">When should this recurring event stop?</p>
+                      <p className="text-xs md:text-sm text-gray-500">When should this recurring event stop?</p>
                     </div>
                   </div>
                 )}
@@ -419,31 +408,32 @@ export default function NewEventPage() {
 
             {/* Location & Capacity */}
             <Card>
-              <CardHeader>
-                <CardTitle>Who & Where</CardTitle>
-                <CardDescription>Where will your event be held and who will be hosting?</CardDescription>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl">Who & Where</CardTitle>
+                <CardDescription className="text-sm md:text-base">Where will your event be held and who will be hosting?</CardDescription>
               </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-4">
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="location">Where will your event be held? *</Label>
+                  <Label htmlFor="location" className="text-sm md:text-base">Where will your event be held? *</Label>
                   <Input
                     id="location"
                     placeholder="e.g., Main Prayer Hall, Community Center"
                     value={formData.location}
                     onChange={(e) => handleInputChange("location", e.target.value)}
-                    className={errors.location ? "border-red-500 focus:border-red-500" : ""}
+                    className={`h-10 md:h-11 text-sm md:text-base ${errors.location ? "border-red-500 focus:border-red-500" : ""}`}
                     required
                   />
                   {renderError("location")}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="host">Who will be hosting?</Label>
+                  <Label htmlFor="host" className="text-sm md:text-base">Who will be hosting?</Label>
                   <Input
                     id="host"
                     placeholder="e.g., Mufti Anwer, Nueces Mosque, etc."
                     value={formData.host}
                     onChange={(e) => handleInputChange("host", e.target.value)}
+                    className="h-10 md:h-11 text-sm md:text-base"
                   />
                 </div>
               </CardContent>
@@ -451,25 +441,25 @@ export default function NewEventPage() {
           </div>
 
           {/* Settings Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
 
             {/* Preview */}
             <Card>
-              <CardHeader>
-                <CardTitle>Preview</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl">Preview</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                   {/* Header Section */}
-                  <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                  <div className="bg-gray-50 px-3 md:px-4 py-3 flex items-center justify-between">
                     <div className="text-center flex-1">
-                      <h3 className="font-semibold text-gray-800 text-sm">{formData.title || "Event Title"}</h3>
+                      <h3 className="font-semibold text-gray-800 text-xs md:text-sm truncate">{formData.title || "Event Title"}</h3>
                       <p className="text-xs text-gray-600">Mosque Name</p>
                     </div>
                   </div>
 
                   {/* Main Content */}
-                  <div className="px-4 py-2 bg-gray-50">
+                  <div className="px-3 md:px-4 py-2 bg-gray-50">
                     {/* Event Image */}
                     <div className="w-full aspect-square rounded-lg mb-4 overflow-hidden border border-gray-200">
                       {formData.image ? (
@@ -485,7 +475,7 @@ export default function NewEventPage() {
                       ) : (
                         <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                           <div className="text-center">
-                            <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                            <ImageIcon className="w-6 h-6 md:w-8 md:h-8 text-gray-400 mx-auto mb-2" />
                             <p className="text-xs text-gray-500">No image uploaded</p>
                           </div>
                         </div>
@@ -496,7 +486,7 @@ export default function NewEventPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-gray-800">
+                          <p className="text-xs md:text-sm font-semibold text-gray-800">
                             {formData.date ? new Date(formData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : "Date"}
                           </p>
                           <p className="text-xs text-gray-600">
@@ -516,11 +506,11 @@ export default function NewEventPage() {
                       <div className="space-y-2 text-xs text-gray-700">
                         <div className="flex items-center">
                           <Users className="w-3 h-3 mr-2 text-gray-500" />
-                          <span>Hosted by {formData.host || "Nueces Mosque"}</span>
+                          <span className="truncate">Hosted by {formData.host || "Nueces Mosque"}</span>
                         </div>
                         <div className="flex items-center">
                           <MapPin className="w-3 h-3 mr-2 text-gray-500" />
-                          <span className="underline">Located @ {formData.location || "location"}</span>
+                          <span className="underline truncate">Located @ {formData.location || "location"}</span>
                         </div>
                       </div>
                       
@@ -529,8 +519,6 @@ export default function NewEventPage() {
                       </p>
                     </div>
                   </div>
-
-
                 </div>
               </CardContent>
             </Card>
@@ -539,7 +527,7 @@ export default function NewEventPage() {
             <div className="space-y-3">
               <Button
                 onClick={(e) => handleSubmit(e, "publish")}
-                className="w-full bg-mosque-green hover:bg-mosque-green-light"
+                className="w-full bg-mosque-green hover:bg-mosque-green-light h-10 md:h-11 text-sm md:text-base"
                 disabled={isLoading}
               >
                 <Calendar className="h-4 w-4 mr-2" />
@@ -548,7 +536,7 @@ export default function NewEventPage() {
               <Button
                 onClick={(e) => handleSubmit(e, "draft")}
                 variant="outline"
-                className="w-full"
+                className="w-full h-10 md:h-11 text-sm md:text-base"
                 disabled={isLoading}
               >
                 <Save className="h-4 w-4 mr-2" />
