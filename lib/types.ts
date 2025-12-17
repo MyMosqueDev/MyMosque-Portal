@@ -39,12 +39,41 @@ export type JummahTime = {
     iqama: string;
 }
 
+export type PrayerSchedule = {
+    prayerTimes: {
+        fajr: string
+        dhuhr: string
+        asr: string
+        maghrib: string
+        isha: string
+    }
+    timeMode: {
+        fajr: "static" | "increment"
+        dhuhr: "static" | "increment"
+        asr: "static" | "increment"
+        maghrib: "static" | "increment"
+        isha: "static" | "increment"
+    }
+    incrementValues: {
+        fajr: number
+        dhuhr: number
+        asr: number
+        maghrib: number
+        isha: number
+    }
+}
+
 export type PrayerSettings = {
     autoUpdate: boolean;
     sendNotifications: boolean;
     adjustForDST: boolean;
     hanafiAsr: boolean;
     calculationMethod: string;
+}
+
+export type CombinedPrayerSettings = {
+    schedule: PrayerSchedule;
+    settings: PrayerSettings;
 }
 
 export type MosqueData = {
