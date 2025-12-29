@@ -2,7 +2,7 @@
 
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { CombinedPrayerSettings, DateRangePrayerTimes, JummahTime, PrayerSettings } from "@/lib/types";
 import { validatePrayerSchedule, validateJummahTimes } from "@/lib/validation";
 import { createSupabaseClient, getCurrentUser } from "@/lib/supabase";
@@ -347,14 +347,23 @@ export async function updatePrayerSettings(settings: CombinedPrayerSettings): Pr
         // Call cron route to update prayer times
         try {
             const headersList = await headers()
+            const cookieStore = await cookies()
             const host = headersList.get('host') || 'localhost:3000'
             const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
             const baseUrl = `${protocol}://${host}`
             const cronUrl = `${baseUrl}/api/cron?mosqueId=${user.id}`
             
+            // Pass cookies for authentication
+            const cookieHeader = cookieStore.getAll()
+                .map(cookie => `${cookie.name}=${cookie.value}`)
+                .join('; ')
+            
             const cronResponse = await fetch(cronUrl, {
                 method: 'GET',
-                cache: 'no-store'
+                cache: 'no-store',
+                headers: {
+                    'Cookie': cookieHeader
+                }
             })
             
             if (!cronResponse.ok) {

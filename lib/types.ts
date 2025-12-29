@@ -163,3 +163,13 @@ export type DateRangePrayerTimes ={
     }
     isNew?: boolean
 }
+
+export type PrayerTimes = {
+    fajr: { adhan: string; iqama: string };
+    sunrise: string;
+    dhuhr: { adhan: string; iqama: string };
+    asr: { adhan: string; iqama: string };
+    maghrib: { adhan: string; iqama: string };
+    sunset: string;
+    isha: { adhan: string; iqama: string };
+};
