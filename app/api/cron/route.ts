@@ -1,6 +1,16 @@
 import getLocalPrayerTimes from '@/lib/getLocalPrayerTimes'
 import { createClient } from '@/utils/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+
+type PrayerTimes = {
+    fajr: { adhan: string; iqama: string };
+    sunrise: string;
+    dhuhr: { adhan: string; iqama: string };
+    asr: { adhan: string; iqama: string };
+    maghrib: { adhan: string; iqama: string };
+    sunset: string;
+    isha: { adhan: string; iqama: string };
+};
 
 export async function GET(request: NextRequest) {
     const params = request.nextUrl.searchParams
@@ -10,7 +20,7 @@ export async function GET(request: NextRequest) {
     } else {
         const mosqueId = params.get('mosqueId')
         const supabase = await createClient()
-        const { data, error } = await supabase.from('mosques').select('*').eq('id', mosqueId).single()
+        const { data, error } = await supabase.from('mosques').select('*').eq('uid', mosqueId).single()
         if (error) {
             return new Response('Error fetching mosque', { status: 500 })
         } 
@@ -57,27 +67,45 @@ export async function GET(request: NextRequest) {
         }
         
         const prayerTimes = localPrayerTimes.map((time) => {
-            const modifiedTimings = { ...time.timings }
             const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const
+            const times: PrayerTimes = {
+                sunrise: time.timings.sunrise || '',
+                sunset: time.timings.sunset || '',
+                fajr: { adhan: '', iqama: '' },
+                dhuhr: { adhan: '', iqama: '' },
+                asr: { adhan: '', iqama: '' },
+                maghrib: { adhan: '', iqama: '' },
+                isha: { adhan: '', iqama: '' }
+            }
             
             prayers.forEach((prayer) => {
+                const originalTime = time.timings[prayer] // adhan - original time
                 const mode = PrayerSchedule.timeMode[prayer]
+                let iqamaTime: string
                 
                 if (mode === 'static') {
-                    // Replace with static time from schedule
-                    modifiedTimings[prayer] = convert24To12Hour(PrayerSchedule.prayerTimes[prayer])
+                    // iqama is the static time from schedule
+                    iqamaTime = convert24To12Hour(PrayerSchedule.prayerTimes[prayer])
                 } else if (mode === 'increment') {
-                    // Add increment minutes to existing time
-                    const currentMinutes = parse12HourToMinutes(time.timings[prayer])
+                    // iqama is original time + increment
+                    const currentMinutes = parse12HourToMinutes(originalTime)
                     const incrementMinutes = PrayerSchedule.incrementValues[prayer]
                     const newMinutes = currentMinutes + incrementMinutes
-                    modifiedTimings[prayer] = minutesTo12Hour(newMinutes)
+                    iqamaTime = minutesTo12Hour(newMinutes)
+                } else {
+                    // If no mode specified, use original time for both
+                    iqamaTime = originalTime
+                }
+                
+                times[prayer] = {
+                    adhan: originalTime,
+                    iqama: iqamaTime
                 }
             })
             
             return {
-                ...time,
-                timings: modifiedTimings
+                day: time.day,
+                times
             }
         })
         
@@ -124,6 +152,18 @@ export async function GET(request: NextRequest) {
         if (insertError) {
             console.error('Error inserting prayer times:', insertError)
             return new Response(`Error saving prayer times: ${insertError.message}`, { status: 500 })
+        }
+        
+        // Update last_prayer timestamp in mosques table
+        const { error: updateError } = await supabase
+            .from('mosques')
+            .update({
+                last_prayer: new Date().toISOString()
+            })
+            .eq('uid', mosqueId)
+        
+        if (updateError) {
+            console.error('Error updating last_prayer:', updateError)
         }
         
         return new Response(JSON.stringify({ 

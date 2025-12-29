@@ -2,6 +2,7 @@
 
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { CombinedPrayerSettings, DateRangePrayerTimes, JummahTime, PrayerSettings } from "@/lib/types";
 import { validatePrayerSchedule, validateJummahTimes } from "@/lib/validation";
 import { createSupabaseClient, getCurrentUser } from "@/lib/supabase";
@@ -269,7 +270,8 @@ export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<Acti
         const { error: updateError } = await supabase
             .from('mosques')
             .update({
-                jummah_times: jummahTimesObject
+                jummah_times: jummahTimesObject,
+                last_prayer: new Date().toISOString()
             })
             .eq('uid', user.id)
 
@@ -329,7 +331,8 @@ export async function updatePrayerSettings(settings: CombinedPrayerSettings): Pr
         const { error: updateError } = await supabase
             .from('mosques')
             .update({
-                prayer_settings: updatedPrayerSettings
+                prayer_settings: updatedPrayerSettings,
+                last_prayer: new Date().toISOString()
             })
             .eq('uid', user.id)
 
@@ -339,6 +342,27 @@ export async function updatePrayerSettings(settings: CombinedPrayerSettings): Pr
                 success: false,
                 error: 'Failed to update prayer settings. Please try again.'
             }
+        }
+
+        // Call cron route to update prayer times
+        try {
+            const headersList = await headers()
+            const host = headersList.get('host') || 'localhost:3000'
+            const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+            const baseUrl = `${protocol}://${host}`
+            const cronUrl = `${baseUrl}/api/cron?mosqueId=${user.id}`
+            
+            const cronResponse = await fetch(cronUrl, {
+                method: 'GET',
+                cache: 'no-store'
+            })
+            
+            if (!cronResponse.ok) {
+                console.error('Error calling cron route:', await cronResponse.text())
+            }
+        } catch (cronError) {
+            console.error('Error calling cron route:', cronError)
+            // Don't fail the whole operation if cron call fails
         }
 
         revalidatePath('/dashboard/prayer-times')
