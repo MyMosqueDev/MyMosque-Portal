@@ -4,32 +4,90 @@ import { parse12HourToMinutes, minutesTo12Hour, convert24To12Hour } from '@/lib/
 import { createClient } from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { PrayerSchedule, PrayerTimes } from '@/lib/types'
+import { SupabaseClient } from '@supabase/supabase-js'
+
+type CronResponse = {
+    success: string[]
+    error: {error: string, mosqueId: string}[]
+}
+
+type UpdatePrayerTimesResult = {
+    success: boolean
+    error?: string
+}
+
+const getMosqueIds = async (supabase: SupabaseClient) => {
+    const { data, error } = await supabase.from("mosques").select("uid");
+    if (error) {
+        console.error('Error fetching mosque IDs:', error)
+        return []
+    }
+    return data.map((mosque) => mosque.uid)
+}
 
 export async function GET(request: NextRequest) {
     const params = request.nextUrl.searchParams
-    const mosqueId = params.get('mosqueId')
+    const mosqueId : string | null = params.get('mosqueId')
 
-    if (!mosqueId) {
-        return new NextResponse('Mosque ID is required', { status: 400 })
-    } 
-    
-    const supabase = await createClient()
+    const res: CronResponse = {
+        success: [],
+        error: [],
+    }
+
+    const supabase: SupabaseClient = await createClient()
+
     const authResult = await authorizeRequest(request, supabase, mosqueId)
-    
+
     if (!authResult.authorized) {
         return authResult.errorResponse || new NextResponse('Unauthorized', { status: 401 })
     }
-    
+
+    if (mosqueId) {
+        const result = await updatePrayerTimes(supabase, mosqueId)
+        if (result.success) {
+            res.success.push(mosqueId)
+        } else {
+            res.error.push({error: result.error || 'Unknown error', mosqueId: mosqueId})
+        }
+    } else {
+        const mosqueIds = await getMosqueIds(supabase);
+        for (const mosqueId of mosqueIds) {
+            const result = await updatePrayerTimes(supabase, mosqueId)
+            if (result.success) {
+                res.success.push(mosqueId)
+            } else {
+                res.error.push({error: result.error || 'Unknown error', mosqueId: mosqueId})
+            }
+        }
+    }
+
+    return new Response(JSON.stringify({ 
+        success: res.success, 
+        error: res.error 
+    }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+    })
+
+}
+
+const updatePrayerTimes = async (supabase: SupabaseClient, mosqueId: string) => {
     const { data, error } = await supabase.from('mosques').select('*').eq('uid', mosqueId).single()
     if (error) {
-        return new NextResponse('Error fetching mosque', { status: 500 })
+        return {
+            success: false,
+            error: error.message || 'Unknown error',
+        } as UpdatePrayerTimesResult
     } 
     const prayerSchedule: PrayerSchedule = data.prayer_settings.schedule
     const address: string = data.address
     const localPrayerTimes = await getLocalPrayerTimes(address) // add a type to this
     
     if (!localPrayerTimes) {
-        return new NextResponse('Failed to fetch local prayer times', { status: 500 })
+        return {
+            error: 'Failed to fetch local prayer times',
+            success: false
+        } as UpdatePrayerTimesResult
     } 
     
     const prayerTimes: Array<{ day: string; times: PrayerTimes }> = localPrayerTimes.map((time) => { // fix this type
@@ -80,22 +138,47 @@ export async function GET(request: NextRequest) {
     const year = now.getFullYear().toString().slice(-2)
     const mmYy = `${month}-${year}`
     
-    // Use upsert to insert or update in one operation
-    const { data: prayerTimesData, error: upsertError } = await supabase
+    const { data: existingRecord } = await supabase
         .from('new_prayer_times')
-        .upsert({
-            'mm-yy': mmYy,
-            mosque_id: mosqueId,
-            prayer_times: prayerTimes
-        }, {
-            onConflict: 'mm-yy,mosque_id'
-        })
-        .select()
-        .single()
+        .select('*')
+        .eq('mm-yy', mmYy)
+        .eq('mosque_id', mosqueId)
+        .maybeSingle()
     
-    if (upsertError) {
-        console.error('Error upserting prayer times:', upsertError)
-        return new NextResponse(`Error saving prayer times: ${upsertError.message}`, { status: 500 })
+    let insertData, insertError;
+    
+    if (existingRecord) {
+        const { data, error } = await supabase
+            .from('new_prayer_times')
+            .update({
+                prayer_times: prayerTimes
+            })
+            .eq('mm-yy', mmYy)
+            .eq('mosque_id', mosqueId)
+            .select()
+            .single()
+        insertData = data
+        insertError = error
+    } else {
+        const { data, error } = await supabase
+            .from('new_prayer_times')
+            .insert({
+                'mm-yy': mmYy,
+                mosque_id: mosqueId,
+                prayer_times: prayerTimes
+            })
+            .select()
+            .single()
+        insertData = data
+        insertError = error
+    }
+    
+    if (insertError) {
+        console.error('Error inserting prayer times:', insertError)
+        return {
+            success: false,
+            error: insertError.message || 'Failed to save prayer times'
+        } as UpdatePrayerTimesResult
     }
     
     const { error: updateError } = await supabase
@@ -107,15 +190,13 @@ export async function GET(request: NextRequest) {
     
     if (updateError) {
         console.error('Error updating last_prayer:', updateError)
+        return {
+            error: updateError.message || 'Unknown error', 
+            success: false
+        } as UpdatePrayerTimesResult
     }
-    
-    return new Response(JSON.stringify({ 
-        success: true, 
-        mmYy,
-        mosqueId,
-        prayerTimesCount: prayerTimes.length 
-    }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-    })
+
+    return {
+        success: true
+    } as UpdatePrayerTimesResult
 }

@@ -19,15 +19,21 @@ interface AuthorizationResult {
 export async function authorizeRequest(
     request: NextRequest,
     supabase: SupabaseClient,
-    mosqueId: string,
+    mosqueId: string | null,
     secretTokenEnvVar: string = 'CRON_SECRET_TOKEN'
 ): Promise<AuthorizationResult> {
     const authHeader = request.headers.get('authorization')
     const secretToken = process.env[secretTokenEnvVar]
     
     // Check for secret token authorization (for external cron services)
-    if (secretToken && authHeader === secretToken) {
-        return { authorized: true }
+    // Handle both "Bearer <token>" and plain token formats
+    if (secretToken && authHeader) {
+        const token = authHeader.startsWith('Bearer ') 
+            ? authHeader.substring(7) 
+            : authHeader
+        if (token === secretToken) {
+            return { authorized: true }
+        }
     }
     
     // Otherwise, require user authentication
@@ -41,7 +47,7 @@ export async function authorizeRequest(
     }
     
     // Verify user owns the mosque (mosqueId is the user's uid)
-    if (user.id !== mosqueId) {
+    if (!mosqueId || user.id !== mosqueId) {
         return {
             authorized: false,
             errorResponse: new NextResponse('Forbidden: You do not have permission to access this mosque', { status: 403 })
