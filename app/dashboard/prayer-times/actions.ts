@@ -344,7 +344,6 @@ export async function updatePrayerSettings(settings: CombinedPrayerSettings): Pr
             }
         }
 
-        // Call cron route to update prayer times
         try {
             const headersList = await headers()
             const cookieStore = await cookies()
