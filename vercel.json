@@ -2,8 +2,8 @@
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "crons": [
       {
-        "path": "https://www.mymosque.app/api/cron",
-        "schedule": "45 23 2 * *"
+        "path": "/api/cron",
+        "schedule": "0 0 3 * *"
       }
     ]
   }
