@@ -26,6 +26,7 @@ const getMosqueIds = async (supabase: SupabaseClient) => {
 }
 
 export async function GET(request: NextRequest) {
+    console.log('Cron route called')
     const params = request.nextUrl.searchParams
     const mosqueId : string | null = params.get('mosqueId')
 

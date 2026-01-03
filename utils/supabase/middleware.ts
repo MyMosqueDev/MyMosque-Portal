@@ -37,10 +37,20 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Skip authentication redirect for:
+  // 1. Vercel cron jobs (has x-vercel-cron header)
+  // 2. API cron route (handles its own authentication)
+  // 3. Login/auth pages
+  const isVercelCron = request.headers.get('x-vercel-cron')
+  const isCronRoute = request.nextUrl.pathname.startsWith('/api/cron')
+  const isPublicRoute = request.nextUrl.pathname.startsWith('/login') || 
+                        request.nextUrl.pathname.startsWith('/auth')
+
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
+    !isVercelCron &&
+    !isCronRoute &&
+    !isPublicRoute
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()

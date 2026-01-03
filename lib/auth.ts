@@ -22,6 +22,22 @@ export async function authorizeRequest(
     mosqueId: string | null,
     secretTokenEnvVar: string = 'CRON_SECRET_TOKEN'
 ): Promise<AuthorizationResult> {
+    // Check for Vercel cron job header first (highest priority)
+    const vercelCronHeader = request.headers.get('x-vercel-cron')
+    if (vercelCronHeader) {
+        // Vercel sends this header when triggering cron jobs
+        // Optionally validate against a secret if CRON_SECRET is set
+        const cronSecret = process.env.CRON_SECRET
+        if (cronSecret && vercelCronHeader !== cronSecret) {
+            return {
+                authorized: false,
+                errorResponse: new NextResponse('Unauthorized: Invalid cron secret', { status: 401 })
+            }
+        }
+        // If no secret is set, just check that the header exists (less secure but common)
+        return { authorized: true }
+    }
+    
     const authHeader = request.headers.get('authorization')
     const secretToken = process.env[secretTokenEnvVar]
     
