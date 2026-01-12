@@ -17,7 +17,7 @@ export default function PatchNotesPage() {
       </div>
 
       {/* Header */}
-      <header className="relative z-50 border-b border-white/20 bg-white/70 backdrop-blur-xl sticky top-0">
+      <header className="sticky top-0 z-50 border-b border-white/20 bg-white/70 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-2xl shadow-lg overflow-hidden">
@@ -104,10 +104,14 @@ export default function PatchNotesPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base md:text-xl font-semibold text-gray-900 mb-1.5 md:mb-2">
-                      Android App Release
+                      Android Beta Release
                     </h3>
                     <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-                      Our Android app is officially live! We held off on launching until we could ensure a consistent, high-quality experience across all devices. After extensive testing, we're excited to welcome Android users—download the app now from the Google Play Store.
+                      Our Android beta is now available! We're opening up early access to gather feedback and ensure a consistent, high-quality experience across all devices.{" "}
+                      <Link href="/android-beta" className="text-mosque-blue hover:text-mosque-blue-light font-medium underline underline-offset-2">
+                        Sign up for the beta
+                      </Link>
+                      {" "}to get early access and help shape the future of MyMosque on Android.
                     </p>
                   </div>
                 </div>
