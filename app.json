@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "dbde3fa4-c9aa-41c2-82d4-2617652b704e"
+      }
+    },
+    "android": {
+      "package": "com.vayania.mymosqueapp"
+    }
+  }
+}

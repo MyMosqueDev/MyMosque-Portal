@@ -1,5 +1,6 @@
 import { supabase } from '@/utils/supabase/client'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendNotifications } from '@/lib/notifications'
 
 
 export async function GET(request: NextRequest) {
