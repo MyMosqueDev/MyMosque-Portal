@@ -14,7 +14,7 @@ function convertTo12Hour(time24: string): string {
 export default async function getLocalPrayerTimes(address: string) {
     const year = new Date().getFullYear()
     const month = new Date().getMonth() + 1
-    const method = 3 // ISNA
+    const method = 2 // ISNA
     const school = 1 // Hanafi
     const encodedAddress = encodeURIComponent(address).replace(/%20/g, '+')
 
