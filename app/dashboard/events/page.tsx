@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Calendar, Plus, MapPin, Clock, Users, Edit, Trash2, Save } from "lucide-react"
+import { Calendar, Plus, MapPin, Clock, Users, Edit, Trash2, Save, Copy } from "lucide-react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { useState, useEffect } from "react"
 import { Event } from "@/lib/types"
-import { getEvents, updateEvent, deleteEvent } from "./actions"
+import { getEvents, updateEvent, deleteEvent, duplicateEvent } from "./actions"
 import { toast } from "sonner"
 
 export default function EventsPage() {
@@ -31,6 +31,7 @@ export default function EventsPage() {
     location: "",
   })
   const [isEditLoading, setIsEditLoading] = useState(false)
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false)
 
   // Helper function to convert 12-hour time to 24-hour format
   const convertTo24Hour = (time12h: string): string => {
@@ -127,7 +128,14 @@ export default function EventsPage() {
     setEventToDelete(null)
   }
 
+  const isEventPast = (dateString: string) => {
+    const eventDate = new Date(dateString)
+    eventDate.setHours(23, 59, 59, 999)
+    return eventDate < new Date()
+  }
+
   const openEditDialog = (event: Event) => {
+    setIsDuplicateMode(false)
     setEventToEdit(event)
     const eventDate = new Date(event.date)
     const dateString = eventDate.toISOString().split('T')[0]
@@ -141,6 +149,27 @@ export default function EventsPage() {
       title: event.title || "",
       description: event.description || "",
       date: dateString,
+      startTime: timeString,
+      host: event.host || "",
+      location: event.location || "",
+    })
+    setEditDialogOpen(true)
+  }
+
+  const openDuplicateDialog = (event: Event) => {
+    setIsDuplicateMode(true)
+    setEventToEdit(event)
+    const eventDate = new Date(event.date)
+
+    // Keep the same time for convenience
+    const hours = eventDate.getHours().toString().padStart(2, '0')
+    const minutes = eventDate.getMinutes().toString().padStart(2, '0')
+    const timeString = `${hours}:${minutes}`
+
+    setEditFormData({
+      title: event.title || "",
+      description: event.description || "",
+      date: "", // Clear date so user picks a new one
       startTime: timeString,
       host: event.host || "",
       location: event.location || "",
@@ -181,28 +210,52 @@ export default function EventsPage() {
         combinedDateTime = new Date().toISOString()
       }
 
-      const { data, error } = await updateEvent(eventToEdit.id as string, {
-        title: editFormData.title,
-        description: editFormData.description,
-        date: combinedDateTime,
-        host: editFormData.host,
-        location: editFormData.location,
-      })
+      if (isDuplicateMode) {
+        const { data, error } = await duplicateEvent(eventToEdit.id as string, {
+          title: editFormData.title,
+          description: editFormData.description,
+          date: combinedDateTime,
+          host: editFormData.host,
+          location: editFormData.location,
+        })
 
-      if (error) {
-        toast.error(error)
-        return
+        if (error) {
+          toast.error(error)
+          return
+        }
+
+        // Add new event to local state
+        if (data) {
+          setEvents(prev => [data, ...prev])
+        }
+
+        toast.success("Event duplicated successfully")
+      } else {
+        const { data, error } = await updateEvent(eventToEdit.id as string, {
+          title: editFormData.title,
+          description: editFormData.description,
+          date: combinedDateTime,
+          host: editFormData.host,
+          location: editFormData.location,
+        })
+
+        if (error) {
+          toast.error(error)
+          return
+        }
+
+        // Update local state
+        setEvents(prev => prev.map(e => e.id === eventToEdit.id ? data : e))
+        
+        toast.success("Event updated successfully")
       }
 
-      // Update local state
-      setEvents(prev => prev.map(e => e.id === eventToEdit.id ? data : e))
-      
-      toast.success("Event updated successfully")
       setEditDialogOpen(false)
       setEventToEdit(null)
+      setIsDuplicateMode(false)
     } catch (error: unknown) {
-      console.error('Error updating event:', error)
-      toast.error("Failed to update event")
+      console.error('Error:', error)
+      toast.error(isDuplicateMode ? "Failed to duplicate event" : "Failed to update event")
     } finally {
       setIsEditLoading(false)
     }
@@ -218,6 +271,7 @@ export default function EventsPage() {
   const cancelEdit = () => {
     setEditDialogOpen(false)
     setEventToEdit(null)
+    setIsDuplicateMode(false)
   }
 
   if (isLoading) {
@@ -369,8 +423,25 @@ export default function EventsPage() {
 
                         {/* Actions */}
                         <div className="flex items-center space-x-2 sm:ml-4 self-end sm:self-start">
-                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(event)} className="h-8 w-8 p-0">
-                            <Edit className="h-4 w-4" />
+                          <span title={isEventPast(event.date) ? "Unable to edit past events" : "Edit event"}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditDialog(event)}
+                              className={`h-8 w-8 p-0 ${isEventPast(event.date) ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+                              disabled={isEventPast(event.date)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDuplicateDialog(event)}
+                            className="h-8 w-8 p-0"
+                            title="Duplicate event"
+                          >
+                            <Copy className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 h-8 w-8 p-0" onClick={() => openDeleteDialog(event)}>
                             <Trash2 className="h-4 w-4" />
@@ -410,9 +481,13 @@ export default function EventsPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
           <DialogHeader>
-            <DialogTitle className="text-lg md:text-xl">Edit Event</DialogTitle>
+            <DialogTitle className="text-lg md:text-xl">
+              {isDuplicateMode ? "Duplicate Event" : "Edit Event"}
+            </DialogTitle>
             <DialogDescription className="text-sm md:text-base">
-              Update your event details
+              {isDuplicateMode
+                ? "Create a copy of this event with updated details"
+                : "Update your event details"}
             </DialogDescription>
           </DialogHeader>
           
@@ -540,8 +615,17 @@ export default function EventsPage() {
               className="bg-mosque-green hover:bg-mosque-green-light w-full sm:w-auto"
               disabled={isEditLoading || !editFormData.title || !editFormData.description || !editFormData.date || !editFormData.location || !editFormData.startTime}
             >
-              <Save className="h-4 w-4 mr-2" />
-              {isEditLoading ? "Updating..." : "Update Event"}
+              {isDuplicateMode ? (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  {isEditLoading ? "Creating..." : "Create Duplicate"}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {isEditLoading ? "Updating..." : "Update Event"}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
