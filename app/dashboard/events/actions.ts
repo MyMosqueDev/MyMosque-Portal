@@ -19,7 +19,7 @@ function validateEvent(data: { title: string; description: string; date: string 
     
     if (!data.description?.trim()) {
         errors.push("Content is required")
-    } else if (data.description.length > 500) {
+    } else if (data.description.length > 1000) {
         errors.push("Content must be less than 500 characters")
     }
 
