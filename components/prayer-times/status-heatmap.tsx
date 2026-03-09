@@ -13,7 +13,7 @@ interface JummahTime {
 }
 
 interface StatusHeatmapProps {
-  dateRanges: DateRangePrayerTimes[]
+  schedule: DateRangePrayerTimes | null
   jummahTimes: JummahTime[]
 }
 
@@ -25,17 +25,15 @@ const prayerNames = {
   isha: "Isha",
 }
 
-export function StatusHeatmap({ dateRanges, jummahTimes }: StatusHeatmapProps) {
+export function StatusHeatmap({ schedule, jummahTimes }: StatusHeatmapProps) {
   const getScheduleForDate = (date: Date) => {
-    const dateStr = date.toISOString().split("T")[0]
-    return dateRanges.find((range) => {
-      if (!range.startDate || !range.endDate) return false
-      return dateStr >= range.startDate && dateStr <= range.endDate
-    })
+    // Since we only have one schedule now, return it if it exists
+    return schedule || null
   }
 
   const hasAssignedPrayerTimes = (date: Date) => {
-    return getScheduleForDate(date) !== undefined
+    // If schedule exists, it applies to all dates
+    return schedule !== null
   }
 
   const generateHeatMapData = () => {
@@ -88,8 +86,8 @@ export function StatusHeatmap({ dateRanges, jummahTimes }: StatusHeatmapProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Active Schedules</span>
-          <Badge variant="outline">{dateRanges.length}</Badge>
+          <span className="text-sm text-gray-600">Schedule Status</span>
+          <Badge variant="outline">{schedule ? schedule.status || "active" : "none"}</Badge>
         </div>
         <div className="pt-4 border-t">
           <div className="flex items-center justify-between mb-3">

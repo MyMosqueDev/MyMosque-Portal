@@ -1,4 +1,4 @@
-import { DateRangePrayerTimes } from "./types"
+import { DateRangePrayerTimes, PrayerSchedule } from "./types"
 
 export interface ValidationError {
   field: string
@@ -37,6 +37,35 @@ export function validatePrayerSchedule(data: DateRangePrayerTimes): ValidationRe
       errors.push({ field: "endDate", message: "End date must be after start date" })
     }
   }
+
+  // Validate prayer times
+  const prayerTimes = data.prayerTimes
+  const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
+
+  Object.entries(prayerTimes).forEach(([prayer, time]) => {
+    if (!time) {
+      errors.push({ field: `prayerTimes.${prayer}`, message: `${prayer} prayer time is required` })
+    } else if (!timeRegex.test(time)) {
+      errors.push({ field: `prayerTimes.${prayer}`, message: `${prayer} prayer time must be in HH:MM format` })
+    }
+  })
+
+  // Validate increment values
+  const incrementValues = data.incrementValues
+  Object.entries(incrementValues).forEach(([prayer, value]) => {
+    if (typeof value !== 'number' || value < 0) {
+      errors.push({ field: `incrementValues.${prayer}`, message: `${prayer} increment value must be a non-negative number` })
+    }
+  })
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
+}
+
+export function validatePrayerScheduleData(data: PrayerSchedule): ValidationResult {
+  const errors: ValidationError[] = []
 
   // Validate prayer times
   const prayerTimes = data.prayerTimes

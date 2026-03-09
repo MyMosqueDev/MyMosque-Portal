@@ -82,6 +82,9 @@ export default function LandingPage() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
+            <Link href="/patch-notes" className="text-sm text-gray-600 hover:text-mosque-blue transition-colors duration-200 underline">
+              Version 1.1.2
+            </Link>
             <Link href="/auth/login">
               <Button variant="ghost" className="rounded-full hover:bg-white/50">
                 Log In
@@ -111,6 +114,9 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-white/20 bg-white/90 backdrop-blur-xl">
             <div className="container mx-auto px-4 py-4 space-y-3">
+              <Link href="/patch-notes" className="block text-sm text-gray-600 hover:text-mosque-blue transition-colors duration-200 py-2">
+                v. 1.1.2
+              </Link>
               <Link href="/auth/login" className="block">
                 <Button variant="ghost" className="w-full justify-start rounded-lg">
                   Log In
@@ -197,7 +203,7 @@ export default function LandingPage() {
                   <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-mosque-green to-mosque-blue rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
                     <Users className="h-6 w-6 md:h-8 md:w-8 text-white" />
                   </div>
-                  <h4 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">100+</h4>
+                  <h4 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">300+</h4>
                   <p className="text-sm md:text-base text-gray-600">People Connected</p>
                 </CardContent>
               </Card>

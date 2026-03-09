@@ -19,7 +19,7 @@ function validateEvent(data: { title: string; description: string; date: string 
     
     if (!data.description?.trim()) {
         errors.push("Content is required")
-    } else if (data.description.length > 500) {
+    } else if (data.description.length > 1000) {
         errors.push("Content must be less than 500 characters")
     }
 
@@ -169,6 +169,21 @@ export async function updateEvent(id: string, data: { title: string; description
         // Verify ownership
         await verifyEventOwnership(supabase, id, user)
 
+        // Check if event is in the past (cannot edit past events)
+        const {data: currentEvent} = await supabase
+            .from('events')
+            .select('date')
+            .eq('id', id)
+            .single()
+
+        if (currentEvent) {
+            const eventDate = new Date(currentEvent.date)
+            eventDate.setHours(23, 59, 59, 999)
+            if (eventDate < new Date()) {
+                throw new Error('Cannot edit events that have already passed')
+            }
+        }
+
         // Sanitize inputs
         const sanitizedData = {
             title: sanitizeInput(data.title),
@@ -243,5 +258,90 @@ export async function deleteEvent(id: string) {
         return { error: null }
     } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+}
+
+export async function duplicateEvent(id: string, data: { title: string; description: string; date: string; host: string; location: string }) {
+    try {
+        const supabase = await createSupabaseClient()
+        const user = await getCurrentUser(supabase)
+
+        // Verify ownership of original event
+        await verifyEventOwnership(supabase, id, user)
+
+        // Get original event for image
+        const {data: originalEvent, error: fetchError} = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !originalEvent) {
+            throw new Error('Original event not found')
+        }
+
+        // Validate new event data
+        const validationErrors = validateEvent(data)
+        if (validationErrors.length > 0) {
+            throw new Error(validationErrors.join(', '))
+        }
+
+        // Copy image in storage
+        const originalImageName = originalEvent.image?.split('/').pop()
+        const newImageName = `${data.title.toLowerCase().replace(/\s+/g, '-')}-${data.date.split('T')[0]}.jpg`
+        const newImageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${newImageName}`
+
+        let finalImageUrl = originalEvent.image
+        if (originalImageName) {
+            const {error: copyError} = await supabase.storage.from('images').copy(originalImageName, newImageName)
+            if (!copyError) {
+                finalImageUrl = newImageUrl
+            } else {
+                console.log('Failed to copy image, using original URL:', copyError)
+            }
+        }
+
+        // Create new event
+        const sanitizedEvent = {
+            title: sanitizeInput(data.title),
+            description: sanitizeInput(data.description),
+            host: sanitizeInput(data.host || ''),
+            location: sanitizeInput(data.location),
+            date: data.date,
+            status: 'published' as const,
+            masjid_id: user.id,
+            image: finalImageUrl,
+            created_at: new Date().toISOString(),
+        }
+
+        const {data: newEvent, error: createError} = await supabase
+            .from('events')
+            .insert(sanitizedEvent)
+            .select()
+            .single()
+
+        if (createError) {
+            throw new Error('Failed to duplicate event')
+        }
+
+        const {data: pushTokens} = await supabase
+            .from('notifications')
+            .select('push_token')
+            .eq('masjid_id', user.id)
+            .eq('events', true);
+
+        sendNotifications({
+            pushTokens: pushTokens,
+            title: `${newEvent.host}: ${newEvent.title}`,
+            body: newEvent.description,
+        })
+
+        await updateMosqueLastEvent(supabase, user);
+
+        revalidatePath('/dashboard/events')
+
+        return { data: newEvent, error: null }
+    } catch (error) {
+        return { data: null, error: error instanceof Error ? error.message : 'Unknown error' }
     }
 }

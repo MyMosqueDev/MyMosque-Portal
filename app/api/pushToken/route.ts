@@ -1,5 +1,6 @@
 import { supabase } from '@/utils/supabase/client'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendNotifications } from '@/lib/notifications'
 
 
 export async function GET(request: NextRequest) {
@@ -8,11 +9,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     const data = await request.json()
-    const settings = JSON.parse(data.settings)
-
-    if (data.mosqueId === 'ff37ab83-a461-4af2-9042-2d908329df27') {
-        return NextResponse.json({ status: 'success' })
+    if (!data.mosqueId || !data.pushToken || !data.settings) {
+        return NextResponse.json({ status: 'error', message: 'Invalid data' }, { status: 400 })
     }
+
+    // if (data.mosqueId === 'ff37ab83-a461-4af2-9042-2d908329df27') {
+    //     return NextResponse.json({ status: 'success' })
+    // }
 
     const { data: existing, error: findError } = await supabase
         .from('notifications')
@@ -26,9 +29,9 @@ export async function POST(request: NextRequest) {
             ({ data: notification, error: notificationError } = await supabase
                 .from('notifications')
                 .update({
-                    events: settings.events.enabled,
-                    announcements: settings.announcements.enabled,
-                    prayer_times: false,
+                    events: data.settings.events.enabled,
+                    announcements: data.settings.announcements.enabled,
+                    prayer_times: data.settings.prayer_times.enabled,
                 })
                 .eq('id', existing.id)
                 .select()
@@ -39,9 +42,9 @@ export async function POST(request: NextRequest) {
                 .insert({
                     push_token: data.pushToken,
                     masjid_id: data.mosqueId,
-                    events: settings.events.enabled,
-                    announcements: settings.announcements.enabled,
-                    prayer_times: false,
+                    events: data.settings.events.enabled,
+                    announcements: data.settings.announcements.enabled,
+                    prayer_times: data.settings.prayer_times.enabled,
                     prayer_time_settings: null
                 })
                 .select()
@@ -51,6 +54,11 @@ export async function POST(request: NextRequest) {
     if (notificationError) {
         console.error('Database error fetching prayer times:', notificationError)
         return NextResponse.json({ message: 'Error updating notification: ' + notificationError.message }, { status: 500 })
+    }
+
+    if (findError) {
+        console.error('Database error fetching notification:', findError)
+        return NextResponse.json({ message: 'Error updating notification: ' + findError.message }, { status: 500 })
     }
 
     return NextResponse.json({ status: 'success' })

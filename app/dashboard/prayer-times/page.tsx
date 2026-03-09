@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Bell, Save } from 'lucide-react'
 import { DashboardHeader } from "@/components/dashboard-header"
-import { DateRangePrayerTimes } from "@/lib/types"
-import { createPrayerTimes, getPrayerTimes, updatePrayerTimes, updateJummahTimes, updatePrayerSettings, getMosqueSettings } from "./actions"
+import { CombinedPrayerSettings, PrayerSchedule } from "@/lib/types"
+import {  updateJummahTimes, updatePrayerSettings, getMosqueSettings } from "./actions"
 import { ScheduleForm } from "@/components/prayer-times/schedule-form"
 import { JummahTimes } from "@/components/prayer-times/jummah-times"
 import { PrayerSettings } from "@/components/prayer-times/prayer-settings"
-import { StatusHeatmap } from "@/components/prayer-times/status-heatmap"
+import { MonthlyPrayerTimes } from "@/components/prayer-times/monthly-prayer-times"
 import { SettingsSidebar } from "@/components/prayer-times/prayer-settings"
 import { LoadingState } from "@/components/prayer-times/loading-state"
 import { useToast } from "@/hooks/use-toast"
+import useLocalPrayerTimes from "@/hooks/useLocalPrayerTimes"
+import useMosqueInfo from "@/hooks/useMosqueInfo"
+import { MosqueInfo } from "@/lib/types"
 
 interface JummahTime {
   id: string
@@ -31,11 +34,11 @@ interface PrayerSettings {
 }
 
 export default function PrayerTimesPage() {
-  const [dateRanges, setDateRanges] = useState<DateRangePrayerTimes[]>([])
+  const [schedule, setSchedule] = useState<PrayerSchedule | null>(null)
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
-  const [activeSchedule, setActiveSchedule] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null)
 
   const [jummahTimes, setJummahTimes] = useState<JummahTime[]>([
     {"id": "1", "name": "First Jummah", "athan": "13:30", "iqama": "13:45"}, 
@@ -52,181 +55,68 @@ export default function PrayerTimesPage() {
 
   const { toast } = useToast()
 
-  // Load prayer times on component mount
+  // Get mosque info for address
+  useMosqueInfo({ setMosqueInfo: setMosqueInfo })
+
+  // Get local prayer times using mosque address
+  const { prayerTimes: monthlyPrayerTimes, loading: monthlyLoading, error: monthlyError } = useLocalPrayerTimes(
+    mosqueInfo?.address || ""
+  )
+
+  // Load mosque settings (prayer times, jummah times, and prayer settings)
   useEffect(() => {
-    const loadPrayerTimes = async () => {
+    const loadMosqueSettings = async () => {
       try {
         setIsLoadingData(true)
         setError(null)
         
-        const result = await getPrayerTimes()
-        
+        const result = await getMosqueSettings()
+
+
         if (result.success && result.data) {
-          const transformedData = result.data.map((item: DateRangePrayerTimes) => ({
-            id: item.id?.toString(),
-            name: item.name,
-            startDate: item.startDate ? new Date(item.startDate).toISOString().split('T')[0] : "",
-            endDate: item.endDate ? new Date(item.endDate).toISOString().split('T')[0] : "",
-            status: item.status,
-            prayerTimes: {
-              fajr: item.prayerTimes?.fajr || "05:30",
-              dhuhr: item.prayerTimes?.dhuhr || "12:30",
-              asr: item.prayerTimes?.asr || "15:45",
-              maghrib: item.prayerTimes?.maghrib || "18:15",
-              isha: item.prayerTimes?.isha || "19:30",
-            },
-            timeMode: {
-              fajr: item.timeMode?.fajr || "static",
-              dhuhr: item.timeMode?.dhuhr || "static",
-              asr: item.timeMode?.asr || "static",
-              maghrib: item.timeMode?.maghrib || "static",
-              isha: item.timeMode?.isha || "static",
-            },
-            incrementValues: {
-              fajr: item.incrementValues?.fajr || 0,
-              dhuhr: item.incrementValues?.dhuhr || 0,
-              asr: item.incrementValues?.asr || 0,
-              maghrib: item.incrementValues?.maghrib || 0,
-              isha: item.incrementValues?.isha || 0,
-            },
-            isNew: false, // Mark as existing schedule from database
-          }))
+
+          const jummahTimes = result.data.jummah_times as JummahTime[]
+          const prayerSettings = result.data.prayer_settings.settings as PrayerSettings
+          const prayerSchedule = result.data.prayer_settings.schedule as PrayerSchedule
+
+          setJummahTimes(jummahTimes)
+          setSettings(prayerSettings)
+          setSchedule(prayerSchedule)
           
-          setDateRanges(transformedData)
-          
-          // Set the first schedule as active if we have data
-          if (transformedData.length > 0) {
-            setActiveSchedule(transformedData[0].id)
-          }
-        } else {
-          console.error('Error loading prayer times:', result.error)
-          setError(result.error || 'Failed to load prayer times')
-          setDateRanges([])
-        }
+        } 
       } catch (error) {
-        console.error('Error loading prayer times:', error)
-        setError('An unexpected error occurred while loading prayer times')
-        setDateRanges([])
+        console.error('Error loading mosque settings:', error)
+        setError('An unexpected error occurred while loading mosque settings')
       } finally {
         setIsLoadingData(false)
       }
     }
 
-    loadPrayerTimes()
+    loadMosqueSettings()
   }, [])
-
-  // Load mosque settings (jummah times and prayer settings)
-  useEffect(() => {
-    const loadMosqueSettings = async () => {
-      try {
-        const result = await getMosqueSettings()
-        
-        if (result.success && result.data) {
-          // Load jummah times if they exist
-          if (result.data.jummah_times && Array.isArray(result.data.jummah_times)) {
-            setJummahTimes(result.data.jummah_times)
-          }
-          
-          // Load prayer settings if they exist
-          if (result.data.prayer_settings) {
-            setSettings(prevSettings => ({
-              ...prevSettings,
-              ...result.data.prayer_settings
-            }))
-          }
-        } else {
-          console.error('Error loading mosque settings:', result.error)
-          // Don't set error here as it's not critical
-        }
-      } catch (error) {
-        console.error('Error loading mosque settings:', error)
-        // Don't set error here as it's not critical
-      }
-    }
-
-    if (!isLoadingData) {
-      loadMosqueSettings()
-    }
-  }, [isLoadingData])
 
   const handleSave = async () => {
     setIsLoading(true)
     setError(null)
-    
+    if (!schedule || !settings) {
+      toast({
+        title: "No Schedule or Settings",
+        description: "Please create a schedule and settings to save.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
+    const newSettings: CombinedPrayerSettings = {
+      schedule: schedule,
+      settings: settings,
+    }
+
     try {
-      // Find the currently active schedule
-      const currentSchedule = dateRanges.find(range => range.id === activeSchedule)
-      
-      if (!currentSchedule) {
-        toast({
-          title: "No Active Schedule",
-          description: "Please select a schedule to save.",
-          variant: "destructive",
-        })
-        setIsLoading(false)
-        return
-      }
-      
-      // Check if this is a new schedule or existing one
-      const isNewSchedule = currentSchedule.isNew === true
-      
-      let result
-      if (isNewSchedule) {
-        result = await createPrayerTimes(currentSchedule)
-      } else {
-        result = await updatePrayerTimes(currentSchedule.id, currentSchedule)
-      }
-      
-      if (result.success) {
-        // If it was a new schedule and successfully created, update the local state
-        if (isNewSchedule && result.data) {
-          // Transform the returned data to match our format
-          const savedSchedule = {
-            id: result.data.id?.toString(),
-            name: result.data.name,
-            startDate: result.data.startDate ? new Date(result.data.startDate).toISOString().split('T')[0] : "",
-            endDate: result.data.endDate ? new Date(result.data.endDate).toISOString().split('T')[0] : "",
-            status: result.data.status,
-            prayerTimes: {
-              fajr: result.data.prayerTimes?.fajr || "05:30",
-              dhuhr: result.data.prayerTimes?.dhuhr || "12:30",
-              asr: result.data.prayerTimes?.asr || "15:45",
-              maghrib: result.data.prayerTimes?.maghrib || "18:15",
-              isha: result.data.prayerTimes?.isha || "19:30",
-            },
-            timeMode: {
-              fajr: result.data.timeMode?.fajr || "static",
-              dhuhr: result.data.timeMode?.dhuhr || "static",
-              asr: result.data.timeMode?.asr || "static",
-              maghrib: result.data.timeMode?.maghrib || "static",
-              isha: result.data.timeMode?.isha || "static",
-            },
-            incrementValues: {
-              fajr: result.data.incrementValues?.fajr || 0,
-              dhuhr: result.data.incrementValues?.dhuhr || 0,
-              asr: result.data.incrementValues?.asr || 0,
-              maghrib: result.data.incrementValues?.maghrib || 0,
-              isha: result.data.incrementValues?.isha || 0,
-            },
-            isNew: false, // Mark as saved
-          }
-          
-          // Update the schedule in local state and keep the same active schedule
-          setDateRanges(prevRanges => 
-            prevRanges.map(range => 
-              range.id === currentSchedule.id 
-                ? savedSchedule
-                : range
-            )
-          )
-          
-          // Update the active schedule ID to the new database ID
-          setActiveSchedule(savedSchedule.id)
-        }
         
-        // Also save jummah times and settings
         const jummahResult = await updateJummahTimes(jummahTimes)
-        const settingsResult = await updatePrayerSettings(settings)
+        const settingsResult = await updatePrayerSettings(newSettings)
         
         if (jummahResult.success && settingsResult.success) {
           toast({
@@ -240,23 +130,6 @@ export default function PrayerTimesPage() {
             variant: "default",
           })
         }
-      } else {
-        if (result.errors) {
-          // Handle validation errors
-          const errorMessages = result.errors.map(err => err.message).join(', ')
-          toast({
-            title: "Validation Error",
-            description: errorMessages,
-            variant: "destructive",
-          })
-        } else {
-          toast({
-            title: "Save Failed",
-            description: result.error || "Failed to save schedule. Please try again.",
-            variant: "destructive",
-          })
-        }
-      }
     } catch (error) {
       console.error('Error saving schedule:', error)
       toast({
@@ -337,13 +210,11 @@ export default function PrayerTimesPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          {/* Prayer Times with Dropdown */}
+          {/* Prayer Times */}
           <div className="lg:col-span-2 space-y-4 md:space-y-6">
             <ScheduleForm
-              dateRanges={dateRanges}
-              activeSchedule={activeSchedule}
-              onDateRangesChange={setDateRanges}
-              onActiveScheduleChange={setActiveSchedule}
+              schedule={schedule}
+              onScheduleChange={setSchedule}
               onSave={handleSave}
               isLoading={isLoading}
             />
@@ -361,9 +232,10 @@ export default function PrayerTimesPage() {
 
           {/* Settings Sidebar */}
           <div className="space-y-4 md:space-y-6">
-            <StatusHeatmap
-              dateRanges={dateRanges}
-              jummahTimes={jummahTimes}
+            <MonthlyPrayerTimes
+              prayerTimes={monthlyPrayerTimes}
+              loading={monthlyLoading}
+              error={monthlyError}
             />
 
             <SettingsSidebar

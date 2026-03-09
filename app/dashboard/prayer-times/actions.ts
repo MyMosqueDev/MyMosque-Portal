@@ -2,7 +2,8 @@
 
 import { sanitizeInput } from "@/lib/utils";
 import { revalidatePath } from 'next/cache'
-import { DateRangePrayerTimes, JummahTime, PrayerSettings } from "@/lib/types";
+import { headers, cookies } from 'next/headers'
+import { CombinedPrayerSettings, DateRangePrayerTimes, JummahTime, PrayerSettings } from "@/lib/types";
 import { validatePrayerSchedule, validateJummahTimes } from "@/lib/validation";
 import { createSupabaseClient, getCurrentUser } from "@/lib/supabase";
 
@@ -18,23 +19,39 @@ export async function getPrayerTimes(): Promise<ActionResult> {
         const supabase = await createSupabaseClient()
         const user = await getCurrentUser(supabase)
 
-        const { data: prayerTimes, error: prayerTimesError } = await supabase
-            .from('test_prayer_times')
-            .select('*')
-            .eq('masjid_id', user.id)
-            .neq('status', 'deleted')
+        const { data: mosque, error: mosqueError } = await supabase
+            .from('mosques')
+            .select('prayer_settings')
+            .eq('uid', user.id)
+            .single()
 
-        if (prayerTimesError) {
-            console.error('Database error fetching prayer times:', prayerTimesError)
+        if (mosqueError) {
+            console.error('Database error fetching prayer times:', mosqueError)
             return { 
                 success: false, 
                 error: 'Failed to fetch prayer times. Please try again.' 
             }
         }
 
+        // Extract prayer schedule from prayer_settings if it exists
+        const prayerSettings = mosque?.prayer_settings || {}
+        const hasPrayerSchedule = prayerSettings.prayerTimes || prayerSettings.timeMode || prayerSettings.incrementValues
+        
+        // Return prayer schedule if it exists in prayer_settings, otherwise return empty array
+        const prayerTimes = hasPrayerSchedule ? [{
+            id: prayerSettings.id || Date.now().toString(),
+            name: prayerSettings.name || "Prayer Schedule",
+            startDate: prayerSettings.startDate || "",
+            endDate: prayerSettings.endDate || "",
+            status: prayerSettings.status || "active",
+            prayerTimes: prayerSettings.prayerTimes || {},
+            timeMode: prayerSettings.timeMode || {},
+            incrementValues: prayerSettings.incrementValues || {},
+        }] : []
+
         return { 
             success: true, 
-            data: prayerTimes || [] 
+            data: prayerTimes 
         }
     } catch (error) {
         console.error('Error in getPrayerTimes:', error)
@@ -66,38 +83,57 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
         const supabase = await createSupabaseClient()
         const user = await getCurrentUser(supabase)
 
-        // Check if mosque exists
-        const { error: mosqueError } = await supabase
+        // Get existing prayer_settings to preserve other settings
+        const { data: existingMosque, error: fetchError } = await supabase
             .from('mosques')
-            .select('id')
+            .select('prayer_settings')
             .eq('uid', user.id)
             .single()
 
-        if (mosqueError) {
-            console.error('Error checking mosque:', mosqueError)
+        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+            console.error('Error fetching existing prayer settings:', fetchError)
             return {
                 success: false,
-                error: 'Mosque not found. Please contact support.'
+                error: 'Failed to fetch existing settings. Please try again.'
             }
         }
 
-        // Sanitize input and remove isNew flag
-        const { ...dataWithoutIsNew } = data
-        const sanitizedName = sanitizeInput(dataWithoutIsNew.name)
-        const sanitizedData = {
-            ...dataWithoutIsNew,
+        // Sanitize input and extract only prayer schedule fields (exclude isNew and any other extra fields)
+        const { isNew, ...rest } = data
+        const sanitizedName = sanitizeInput(rest.name || "Prayer Schedule")
+        
+        // Explicitly extract only the prayer schedule fields to avoid including any extra data
+        const prayerScheduleData = {
+            id: rest.id,
             name: sanitizedName,
-            masjid_id: user.id
+            startDate: rest.startDate || "",
+            endDate: rest.endDate || "",
+            status: rest.status || "active",
+            prayerTimes: rest.prayerTimes || {},
+            timeMode: rest.timeMode || {},
+            incrementValues: rest.incrementValues || {},
         }
 
-        const { data: newPrayerTimes, error: createError } = await supabase
-            .from('test_prayer_times')
-            .insert(sanitizedData)
-            .select()
+        // Merge prayer schedule into existing prayer_settings, preserving other settings
+        const existingSettings = existingMosque?.prayer_settings || {}
+        const updatedPrayerSettings = {
+            ...existingSettings,
+            ...prayerScheduleData,
+        }
+
+        // Save prayer times to prayer_settings in mosques table
+        const { data: updatedMosque, error: updateError } = await supabase
+            .from('mosques')
+            .update({
+                prayer_settings: updatedPrayerSettings,
+                last_prayer: new Date().toISOString()
+            })
+            .eq('uid', user.id)
+            .select('prayer_settings')
             .single()
 
-        if (createError) {
-            console.error('Error creating prayer times:', createError)
+        if (updateError) {
+            console.error('Error creating prayer times:', updateError)
             return {
                 success: false,
                 error: 'Failed to create prayer schedule. Please try again.'
@@ -105,7 +141,7 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
         }
 
         revalidatePath('/dashboard/prayer-times')
-        return { success: true, data: newPrayerTimes }
+        return { success: true, data: updatedMosque?.prayer_settings }
     } catch (error) {
         console.error('Error in createPrayerTimes:', error)
         if (error instanceof Error && error.message === 'User not authenticated') {
@@ -122,138 +158,94 @@ export async function createPrayerTimes(data: DateRangePrayerTimes): Promise<Act
     }
 }
 
-export async function deletePrayerTimes(id: string): Promise<ActionResult> {
-    try {
-        const supabase = await createSupabaseClient()
-        const user = await getCurrentUser(supabase)
+// export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes): Promise<ActionResult> {
+//     try {
+//         // Validate the prayer schedule data
+//         const validation = validatePrayerSchedule(data)
+//         if (!validation.isValid) {
+//             return {
+//                 success: false,
+//                 errors: validation.errors
+//             }
+//         }
 
-        // Verify the schedule belongs to the user's mosque
-        const { data: existingSchedule, error: fetchError } = await supabase
-            .from('test_prayer_times')
-            .select('id, masjid_id')
-            .eq('id', id)
-            .eq('masjid_id', user.id)
-            .single()
+//         const supabase = await createSupabaseClient()
+//         const user = await getCurrentUser(supabase)
 
-        if (fetchError || !existingSchedule) {
-            return {
-                success: false,
-                error: 'Schedule not found or you do not have permission to delete it.'
-            }
-        }
+//         // Get existing prayer_settings to preserve other settings
+//         const { data: existingMosque, error: fetchError } = await supabase
+//             .from('mosques')
+//             .select('prayer_settings')
+//             .eq('uid', user.id)
+//             .single()
 
-        const { error: deleteError } = await supabase
-            .from('test_prayer_times')
-            .update({ status: 'deleted' })
-            .eq('id', id)
+//         if (fetchError) {
+//             console.error('Error fetching existing prayer settings:', fetchError)
+//             return {
+//                 success: false,
+//                 error: 'Failed to fetch existing settings. Please try again.'
+//             }
+//         }
 
-        if (deleteError) {
-            console.error('Error deleting prayer times:', deleteError)
-            return {
-                success: false,
-                error: 'Failed to delete prayer schedule. Please try again.'
-            }
-        }
+//         // Sanitize input and extract only prayer schedule fields (exclude isNew and any other extra fields)
+//         const { isNew, ...rest } = data
+//         const sanitizedName = sanitizeInput(rest.name || "Prayer Schedule")
+        
+//         // Explicitly extract only the prayer schedule fields to avoid including any extra data
+//         const prayerScheduleData = {
+//             id: rest.id,
+//             name: sanitizedName,
+//             startDate: rest.startDate || "",
+//             endDate: rest.endDate || "",
+//             status: rest.status || "active",
+//             prayerTimes: rest.prayerTimes || {},
+//             timeMode: rest.timeMode || {},
+//             incrementValues: rest.incrementValues || {},
+//         }
 
-        revalidatePath('/dashboard/prayer-times')
-        return { success: true }
-    } catch (error) {
-        console.error('Error in deletePrayerTimes:', error)
-        if (error instanceof Error && error.message === 'User not authenticated') {
-            revalidatePath('/login')
-            return {
-                success: false,
-                error: 'Authentication required. Please log in again.'
-            }
-        }
-        return {
-            success: false,
-            error: 'An unexpected error occurred. Please try again.'
-        }
-    }
-}
+//         // Merge prayer schedule into existing prayer_settings, preserving other settings
+//         const existingSettings = existingMosque?.prayer_settings || {}
+//         const updatedPrayerSettings = {
+//             ...existingSettings,
+//             ...prayerScheduleData,
+//         }
 
-export async function updatePrayerTimes(id: string, data: DateRangePrayerTimes): Promise<ActionResult> {
-    try {
-        // Validate the prayer schedule data
-        const validation = validatePrayerSchedule(data)
-        if (!validation.isValid) {
-            return {
-                success: false,
-                errors: validation.errors
-            }
-        }
+//         // Update prayer times in prayer_settings in mosques table
+//         const { data: updatedMosque, error: updateError } = await supabase
+//             .from('mosques')
+//             .update({
+//                 prayer_settings: updatedPrayerSettings,
+//                 last_prayer: new Date().toISOString()
+//             })
+//             .eq('uid', user.id)
+//             .select('prayer_settings')
+//             .single()
 
-        const supabase = await createSupabaseClient()
-        const user = await getCurrentUser(supabase)
+//         if (updateError) {
+//             console.error('Error updating prayer times:', updateError)
+//             return {
+//                 success: false,
+//                 error: 'Failed to update prayer schedule. Please try again.'
+//             }
+//         }
 
-        // Verify the schedule belongs to the user's mosque
-        const { data: existingSchedule, error: fetchError } = await supabase
-            .from('test_prayer_times')
-            .select('id, masjid_id')
-            .eq('id', id)
-            .eq('masjid_id', user.id)
-            .single()
-
-        if (fetchError || !existingSchedule) {
-            return {
-                success: false,
-                error: 'Schedule not found or you do not have permission to update it.'
-            }
-        }
-
-        // Sanitize input and remove isNew flag
-        const { ...dataWithoutIsNew } = data
-        const sanitizedName = sanitizeInput(dataWithoutIsNew.name)
-        const sanitizedData = {
-            ...dataWithoutIsNew,
-            name: sanitizedName,
-            updated_at: new Date().toISOString()
-        }
-
-        const { error: updateError } = await supabase
-            .from('test_prayer_times')
-            .update(sanitizedData)
-            .eq('id', id)
-
-        if (updateError) {
-            console.error('Error updating prayer times:', updateError)
-            return {
-                success: false,
-                error: 'Failed to update prayer schedule. Please try again.'
-            }
-        }
-
-        // Update mosque table with last prayer time update
-        const { error: mosqueUpdateError } = await supabase
-            .from('mosques')
-            .update({
-                last_prayer: new Date().toISOString()
-            })
-            .eq('uid', user.id)
-
-        if (mosqueUpdateError) {
-            console.error('Error updating mosque last_prayer_time:', mosqueUpdateError)
-            // Don't fail the entire operation for this
-        }
-
-        revalidatePath('/dashboard/prayer-times')
-        return { success: true }
-    } catch (error) {
-        console.error('Error in updatePrayerTimes:', error)
-        if (error instanceof Error && error.message === 'User not authenticated') {
-            revalidatePath('/login')
-            return {
-                success: false,
-                error: 'Authentication required. Please log in again.'
-            }
-        }
-        return {
-            success: false,
-            error: 'An unexpected error occurred. Please try again.'
-        }
-    }
-}
+//         revalidatePath('/dashboard/prayer-times')
+//         return { success: true, data: updatedMosque?.prayer_settings }
+//     } catch (error) {
+//         console.error('Error in updatePrayerTimes:', error)
+//         if (error instanceof Error && error.message === 'User not authenticated') {
+//             revalidatePath('/login')
+//             return {
+//                 success: false,
+//                 error: 'Authentication required. Please log in again.'
+//             }
+//         }
+//         return {
+//             success: false,
+//             error: 'An unexpected error occurred. Please try again.'
+//         }
+//     }
+// }
 
 export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<ActionResult> {
     try {
@@ -278,7 +270,8 @@ export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<Acti
         const { error: updateError } = await supabase
             .from('mosques')
             .update({
-                jummah_times: jummahTimesObject
+                jummah_times: jummahTimesObject,
+                last_prayer: new Date().toISOString()
             })
             .eq('uid', user.id)
 
@@ -308,15 +301,38 @@ export async function updateJummahTimes(jummahTimes: JummahTime[]): Promise<Acti
     }
 }
 
-export async function updatePrayerSettings(settings: PrayerSettings): Promise<ActionResult> {
+export async function updatePrayerSettings(settings: CombinedPrayerSettings): Promise<ActionResult> {
     try {
         const supabase = await createSupabaseClient()
         const user = await getCurrentUser(supabase)
 
+        // Get existing prayer_settings to preserve prayer schedule data
+        const { data: existingMosque, error: fetchError } = await supabase
+            .from('mosques')
+            .select('prayer_settings')
+            .eq('uid', user.id)
+            .single()
+
+        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+            console.error('Error fetching existing prayer settings:', fetchError)
+            return {
+                success: false,
+                error: 'Failed to fetch existing settings. Please try again.'
+            }
+        }
+
+        // Merge new settings with existing prayer schedule data
+        const existingSettings = existingMosque?.prayer_settings || {}
+        const updatedPrayerSettings = {
+            ...existingSettings,
+            ...settings,
+        }
+
         const { error: updateError } = await supabase
             .from('mosques')
             .update({
-                prayer_settings: settings
+                prayer_settings: updatedPrayerSettings,
+                last_prayer: new Date().toISOString()
             })
             .eq('uid', user.id)
 
@@ -326,6 +342,35 @@ export async function updatePrayerSettings(settings: PrayerSettings): Promise<Ac
                 success: false,
                 error: 'Failed to update prayer settings. Please try again.'
             }
+        }
+
+        try {
+            const headersList = await headers()
+            const cookieStore = await cookies()
+            const host = headersList.get('host') || 'localhost:3000'
+            const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+            const baseUrl = `${protocol}://${host}`
+            const cronUrl = `${baseUrl}/api/cron?mosqueId=${user.id}`
+            
+            // Pass cookies for authentication
+            const cookieHeader = cookieStore.getAll()
+                .map(cookie => `${cookie.name}=${cookie.value}`)
+                .join('; ')
+            
+            const cronResponse = await fetch(cronUrl, {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                    'Cookie': cookieHeader
+                }
+            })
+            
+            if (!cronResponse.ok) {
+                console.error('Error calling cron route:', await cronResponse.text())
+            }
+        } catch (cronError) {
+            console.error('Error calling cron route:', cronError)
+            // Don't fail the whole operation if cron call fails
         }
 
         revalidatePath('/dashboard/prayer-times')

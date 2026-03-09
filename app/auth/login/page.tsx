@@ -103,12 +103,6 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Demo Notice */}
-            <div className="mt-4 md:mt-6 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs md:text-sm text-blue-800">
-                <strong>Demo Mode:</strong> Enter any email and password to continue to the dashboard.
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
