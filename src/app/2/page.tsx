@@ -45,12 +45,15 @@ export default function Page2() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#699A51] animate-pulse" />
             Community Platform for Mosques
           </div>
-          <h1 className="text-6xl lg:text-8xl font-extrabold leading-[0.95] tracking-tight mb-6">
-            Where Faith<br />
-            <span className="italic text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(90deg, #699A51, #87c96a)" }}>
-              Meets
+          <h1 className="text-5xl lg:text-[3.75rem] font-extrabold leading-[1.1] tracking-tight mb-6">
+            Connecting{" "}
+            <span className="text-[#699A51] relative inline-block">
+              Mosques
+              <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M0 5 Q50 1 100 5 Q150 9 200 5" stroke="#699A51" strokeWidth="2.5" fill="none" strokeOpacity="0.7" />
+              </svg>
             </span>{" "}
-            Community
+            with Their Communities
           </h1>
           <p className="text-xl lg:text-2xl text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed">
             MyMosque unifies prayer times, events, and announcements in a single beautiful app for mosques and their communities.
@@ -65,25 +68,6 @@ export default function Page2() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </a>
-          </div>
-        </div>
-
-        {/* Feature pills at bottom of hero */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 pb-8 overflow-x-auto">
-          <div className="flex items-center justify-center gap-3 px-6 min-w-max mx-auto">
-            {["Prayer Times", "Events Calendar", "Announcements", "Community Hub", "Admin Portal", "Push Notifications"].map((f, i) => (
-              <div
-                key={f}
-                className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/20 text-white/90 px-5 py-2.5 rounded-full text-sm font-semibold"
-                style={{
-                  borderColor: [
-                    "#67519A", "#699A51", "#516D9A", "#699A51", "#67519A", "#516D9A"
-                  ][i] + "60"
-                }}
-              >
-                {f}
-              </div>
-            ))}
           </div>
         </div>
 
