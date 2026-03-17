@@ -12,7 +12,7 @@ export default function Page4() {
         </div>
         <div className="px-6 lg:px-12 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="MyMosque" className="h-9 w-9" />
+            <img src="/logo.png" alt="MyMosque" className="h-9 w-9 rounded-lg" />
             <span className="text-xl font-bold text-[#4A4A4A]">MyMosque</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-[#4A4A4A]/70">
@@ -356,9 +356,9 @@ export default function Page4() {
       </section>
 
       {/* ── DOWNLOAD ── */}
-      <section id="download" className="py-24 px-6 lg:px-12 bg-white">
+          <section id="download" className="py-24 px-6 lg:px-12 bg-white">
         <div className="max-w-3xl mx-auto text-center">
-          <img src="/logo.png" alt="MyMosque" className="w-16 h-16 mx-auto mb-6" />
+          <img src="/logo.png" alt="MyMosque" className="w-16 h-16 mx-auto mb-6 rounded-lg" />
           <h2 className="text-4xl font-extrabold text-[#4A4A4A] mb-5">Download MyMosque — it&apos;s free</h2>
           <p className="text-gray-500 text-lg mb-10">Available on iPhone and Android. The mosque admin portal is accessible from any browser.</p>
           <div className="flex flex-wrap justify-center gap-4">
@@ -380,7 +380,7 @@ export default function Page4() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="MyMosque" className="h-8 w-8 opacity-80" />
+              <img src="/logo.png" alt="MyMosque" className="h-8 w-8 opacity-80 rounded-lg" />
               <span className="font-bold text-lg">MyMosque</span>
             </div>
             <div className="flex gap-8 text-white/50 text-sm">

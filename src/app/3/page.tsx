@@ -30,7 +30,7 @@ export default function Page3() {
       {/* ── NAV ── */}
       <nav className="relative z-50 flex items-center justify-between px-8 lg:px-16 py-6">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="MyMosque" className="h-9 w-9" />
+          <img src="/logo.png" alt="MyMosque" className="h-9 w-9 rounded-lg" />
           <span className="text-xl font-bold text-white">MyMosque</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
@@ -255,8 +255,8 @@ export default function Page3() {
           <div
             className="w-20 h-20 rounded-full mx-auto mb-8 flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, #699A51, #516D9A)" }}
-          >
-            <img src="/logo.png" alt="MyMosque" className="w-14 h-14" />
+            >
+            <img src="/logo.png" alt="MyMosque" className="w-14 h-14 rounded-lg" />
           </div>
           <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-5">Download MyMosque</h2>
           <p className="text-white/50 text-lg mb-10 max-w-md mx-auto">
@@ -292,7 +292,7 @@ export default function Page3() {
       <footer className="relative z-10 border-t border-white/5 py-10 px-6 lg:px-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="MyMosque" className="h-7 w-7 opacity-50" />
+            <img src="/logo.png" alt="MyMosque" className="h-7 w-7 opacity-50 rounded-lg" />
             <span className="text-white/40 font-bold">MyMosque</span>
           </div>
           <p className="text-white/20 text-sm">© 2025 MyMosque · Reimagine Your Mosque</p>

@@ -5,7 +5,7 @@ export default function Page5() {
       {/* ── NAV — minimal ── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 px-6 lg:px-16 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="MyMosque" className="h-8 w-8" />
+          <img src="/logo.png" alt="MyMosque" className="h-8 w-8 rounded-lg" />
           <span className="text-lg font-bold text-[#4A4A4A] tracking-tight">MyMosque</span>
         </div>
         <div className="hidden md:flex items-center gap-2">
@@ -356,7 +356,7 @@ export default function Page5() {
       <footer className="border-t border-gray-100 py-10 px-6 lg:px-16">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="MyMosque" className="h-7 w-7 opacity-50" />
+            <img src="/logo.png" alt="MyMosque" className="h-7 w-7 opacity-50 rounded-lg" />
             <span className="text-gray-400 font-bold text-sm">MyMosque</span>
           </div>
           <p className="text-gray-300 text-sm">© 2025 MyMosque · Everything your mosque needs.</p>

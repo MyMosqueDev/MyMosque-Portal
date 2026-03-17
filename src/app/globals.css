@@ -1,29 +1,96 @@
 @import "tailwindcss";
 
+/* ─── Brand palette ─────────────────────────────────────────────────────────
+   Single source of truth for every color used in the app.
+   Section semantics: announcements = green, events = blue, prayer = purple
+   ─────────────────────────────────────────────────────────────────────────── */
 :root {
+  /* Core brand */
+  --mosque-green:          #699A51;
+  --mosque-green-dark:     #5c8846;
+  --mosque-green-subtle:   #F0F7EC;
+
+  --mosque-blue:           #516D9A;
+  --mosque-blue-dark:      #455f87;
+  --mosque-blue-subtle:    #EEF1F7;
+
+  --mosque-purple:         #67519A;
+  --mosque-purple-dark:    #5a4387;
+  --mosque-purple-subtle:  #F0EDF7;
+
+  /* Text & structure */
+  --mosque-text:           #4A4A4A;
+  /* Sidebar: slightly lighter, softer charcoal */
+  --mosque-sidebar:        #24252B;
+  --mosque-page-bg:        #F7F8FA;
+
+  /* Announcement priority levels */
+  --priority-high:         #DC2626;
+  --priority-high-bg:      #FEF2F2;
+  --priority-medium:       #D97706;
+  --priority-medium-bg:    #FFFBEB;
+  /* low priority re-uses --mosque-green / --mosque-green-subtle */
+
+  /* Neutral UI */
+  --neutral-border:        #E5E7EB;
+  --neutral-inactive:      #9CA3AF;
+  --neutral-muted:         #D1D5DB;
+  --neutral-past:          #F3F4F6;
+
+  /* Legacy (Next.js default — kept for existing usage) */
   --background: #ffffff;
   --foreground: #171717;
-  --mosque-green: #699A51;
-  --mosque-blue: #516D9A;
-  --mosque-purple: #67519A;
-  --mosque-text: #4A4A4A;
 }
 
+/* ─── Tailwind theme registration ───────────────────────────────────────────
+   Each --color-* entry here becomes a first-class Tailwind utility, e.g.
+   bg-mosque-green, text-mosque-blue, hover:bg-mosque-purple-dark, etc.
+   Opacity modifiers (bg-mosque-green/10) also work automatically.
+   ─────────────────────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-mosque-green: #699A51;
-  --color-mosque-blue: #516D9A;
-  --color-mosque-purple: #67519A;
-  --color-mosque-text: #4A4A4A;
+
+  /* Next.js defaults */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Brand — solid */
+  --color-mosque-green:         #699A51;
+  --color-mosque-green-dark:    #5c8846;
+  --color-mosque-green-subtle:  #F0F7EC;
+
+  --color-mosque-blue:          #516D9A;
+  --color-mosque-blue-dark:     #455f87;
+  --color-mosque-blue-subtle:   #EEF1F7;
+
+  --color-mosque-purple:        #67519A;
+  --color-mosque-purple-dark:   #5a4387;
+  --color-mosque-purple-subtle: #F0EDF7;
+
+  /* Text & structure */
+  --color-mosque-text:          #4A4A4A;
+  --color-mosque-sidebar:       #24252B;
+  --color-mosque-page-bg:       #F7F8FA;
+
+  /* Priority */
+  --color-priority-high:        #DC2626;
+  --color-priority-high-bg:     #FEF2F2;
+  --color-priority-medium:      #D97706;
+  --color-priority-medium-bg:   #FFFBEB;
+
+  /* Neutrals */
+  --color-neutral-border:       #E5E7EB;
+  --color-neutral-inactive:     #9CA3AF;
+  --color-neutral-muted:        #D1D5DB;
+  --color-neutral-past:         #F3F4F6;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ededed;
+    /* --foreground: #ededed; */
   }
 }
 

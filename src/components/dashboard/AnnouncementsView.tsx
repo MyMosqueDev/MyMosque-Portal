@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import ImageUploader from "./ui/ImageUploader";
+import DeleteConfirmModal from "./ui/DeleteConfirmModal";
+import InlineFormCard from "./ui/InlineFormCard";
+import ItemActions from "./ui/ItemActions";
+import EmptyState from "./ui/EmptyState";
 
 type Priority = "low" | "medium" | "high";
 
@@ -48,10 +53,11 @@ const MOCK_ANNOUNCEMENTS: Announcement[] = [
   },
 ];
 
+// Colors pulled from CSS variables — no inline hex codes
 const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bg: string }> = {
-  high:   { label: "High",   color: "#DC2626", bg: "#FEF2F2" },
-  medium: { label: "Medium", color: "#D97706", bg: "#FFFBEB" },
-  low:    { label: "Low",    color: "#699A51", bg: "#F0F7EC" },
+  high:   { label: "High",   color: "var(--priority-high)",    bg: "var(--priority-high-bg)"   },
+  medium: { label: "Medium", color: "var(--priority-medium)",  bg: "var(--priority-medium-bg)" },
+  low:    { label: "Low",    color: "var(--mosque-green)",     bg: "var(--mosque-green-subtle)" },
 };
 
 const emptyForm = { title: "", body: "", image: null as string | null, priority: "medium" as Priority };
@@ -65,7 +71,6 @@ export default function AnnouncementsView() {
   const [editingId, setEditingId]             = useState<number | null>(null);
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const [imageFileName, setImageFileName]     = useState<string | null>(null);
 
   const filtered = activeFilter === "all"
     ? announcements
@@ -74,14 +79,12 @@ export default function AnnouncementsView() {
   function openCreate() {
     setEditingId(null);
     setForm(emptyForm);
-    setImageFileName(null);
     setShowInlineForm(true);
   }
 
   function openEdit(a: Announcement) {
     setEditingId(a.id);
     setForm({ title: a.title, body: a.body, image: a.image, priority: a.priority });
-    setImageFileName(a.image ? "existing-image.jpg" : null);
     setShowInlineForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -90,7 +93,6 @@ export default function AnnouncementsView() {
     setShowInlineForm(false);
     setEditingId(null);
     setForm(emptyForm);
-    setImageFileName(null);
   }
 
   function handleSave() {
@@ -112,14 +114,6 @@ export default function AnnouncementsView() {
     setDeleteConfirmId(null);
   }
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFileName(file.name);
-      setForm((f) => ({ ...f, image: URL.createObjectURL(file) }));
-    }
-  }
-
   const isFormValid = form.title.trim().length > 0 && form.body.trim().length > 0;
 
   const tabs: { key: FilterTab; label: string }[] = [
@@ -136,12 +130,12 @@ export default function AnnouncementsView() {
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-extrabold text-[#4A4A4A]">Announcements</h1>
+            <h1 className="text-xl font-extrabold text-mosque-text">Announcements</h1>
             <p className="text-sm text-gray-400 mt-0.5">{announcements.length} total</p>
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-1.5 bg-[#699A51] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#5c8846] transition-colors shadow-sm"
+            className="flex items-center gap-1.5 bg-mosque-green text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-mosque-green-dark transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -151,115 +145,76 @@ export default function AnnouncementsView() {
         </div>
 
         {/* Inline create/edit form */}
-        <div
-          className="overflow-hidden transition-all duration-300 ease-in-out"
-          style={{ maxHeight: showInlineForm ? "800px" : "0px" }}
+        <InlineFormCard
+          visible={showInlineForm}
+          title={editingId !== null ? "Edit Announcement" : "New Announcement"}
+          onClose={closeForm}
         >
-          <div className="bg-white rounded-2xl shadow-sm mb-4 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <p className="text-sm font-bold text-[#4A4A4A]">
-                {editingId !== null ? "Edit Announcement" : "New Announcement"}
-              </p>
-              <button
-                onClick={closeForm}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-[#4A4A4A] transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+          <div className="flex gap-3 items-stretch">
+            <div className="flex-1 flex flex-col gap-3">
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="Title *"
+                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-green/40 focus:border-mosque-green transition-colors"
+              />
+              <textarea
+                value={form.body}
+                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+                placeholder="Message *"
+                rows={3}
+                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-green/40 focus:border-mosque-green transition-colors resize-none leading-relaxed flex-1"
+              />
             </div>
-            <div className="px-5 py-5 flex flex-col gap-4">
-              <div className="flex gap-3 items-stretch">
-                <div className="flex-1 flex flex-col gap-3">
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    placeholder="Title *"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#699A51]/40 focus:border-[#699A51] transition-colors"
-                  />
-                  <textarea
-                    value={form.body}
-                    onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-                    placeholder="Message *"
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#699A51]/40 focus:border-[#699A51] transition-colors resize-none leading-relaxed flex-1"
-                  />
-                </div>
-                <div className="relative w-40 shrink-0">
-                  <label
-                    className="flex flex-col items-center justify-center h-full min-h-[148px] rounded-xl border-2 border-dashed cursor-pointer transition-colors overflow-hidden bg-gray-50 relative"
-                    style={form.image ? { borderColor: "transparent" } : { borderColor: "#E5E7EB" }}
-                  >
-                    {form.image ? (
-                      <img src={form.image} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5 px-3 text-center">
-                        <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-xs text-gray-300 font-medium leading-tight">Add image</span>
-                      </div>
-                    )}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                  </label>
-                  {form.image && (
-                    <button
-                      onClick={() => { setImageFileName(null); setForm((f) => ({ ...f, image: null })); }}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"
-                    >
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex gap-1.5">
-                  {(["low", "medium", "high"] as Priority[]).map((level) => {
-                    const cfg = PRIORITY_CONFIG[level];
-                    const selected = form.priority === level;
-                    return (
-                      <button
-                        key={level}
-                        onClick={() => setForm((f) => ({ ...f, priority: level }))}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
-                        style={
-                          selected
-                            ? { color: cfg.color, backgroundColor: cfg.bg, borderColor: cfg.color }
-                            : { color: "#9CA3AF", backgroundColor: "white", borderColor: "#E5E7EB" }
-                        }
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ backgroundColor: selected ? cfg.color : "#D1D5DB" }}
-                        />
-                        {cfg.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  onClick={closeForm}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={!isFormValid}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#699A51] hover:bg-[#5c8846] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {editingId !== null ? "Save" : "Post"}
-                </button>
-              </div>
-            </div>
+            <ImageUploader
+              image={form.image}
+              onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+              onClear={() => setForm((f) => ({ ...f, image: null }))}
+            />
           </div>
-        </div>
+
+          <div className="flex gap-1.5">
+            {(["low", "medium", "high"] as Priority[]).map((level) => {
+              const cfg = PRIORITY_CONFIG[level];
+              const selected = form.priority === level;
+              return (
+                <button
+                  key={level}
+                  onClick={() => setForm((f) => ({ ...f, priority: level }))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                  style={
+                    selected
+                      ? { color: cfg.color, backgroundColor: cfg.bg, borderColor: cfg.color }
+                      : { color: "var(--neutral-inactive)", backgroundColor: "white", borderColor: "var(--neutral-border)" }
+                  }
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: selected ? cfg.color : "var(--neutral-muted)" }}
+                  />
+                  {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={closeForm}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!isFormValid}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-green hover:bg-mosque-green-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {editingId !== null ? "Save" : "Post"}
+            </button>
+          </div>
+        </InlineFormCard>
 
         {/* Filter tabs */}
         <div className="flex items-center gap-1.5 mb-4 flex-wrap">
@@ -275,8 +230,8 @@ export default function AnnouncementsView() {
                   isActive && cfg
                     ? { color: cfg.color, backgroundColor: cfg.bg, borderColor: cfg.color }
                     : isActive
-                    ? { color: "#4A4A4A", backgroundColor: "#E5E7EB", borderColor: "#E5E7EB" }
-                    : { color: "#9CA3AF", backgroundColor: "white", borderColor: "#E5E7EB" }
+                    ? { color: "var(--mosque-text)", backgroundColor: "var(--neutral-border)", borderColor: "var(--neutral-border)" }
+                    : { color: "var(--neutral-inactive)", backgroundColor: "white", borderColor: "var(--neutral-border)" }
                 }
               >
                 {tab.label}
@@ -293,14 +248,14 @@ export default function AnnouncementsView() {
         {/* Announcement list */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-16 text-center px-4">
-              <p className="font-semibold text-[#4A4A4A]">No announcements</p>
-              <p className="text-sm text-gray-400">
-                {activeFilter === "all"
+            <EmptyState
+              title="No announcements"
+              description={
+                activeFilter === "all"
                   ? "Create your first announcement above."
-                  : `No ${activeFilter} priority announcements.`}
-              </p>
-            </div>
+                  : `No ${activeFilter} priority announcements.`
+              }
+            />
           ) : (
             filtered.map((a, idx) => {
               const p = PRIORITY_CONFIG[a.priority];
@@ -317,7 +272,7 @@ export default function AnnouncementsView() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-[#4A4A4A] leading-snug">{a.title}</span>
+                        <span className="font-semibold text-sm text-mosque-text leading-snug">{a.title}</span>
                         <span
                           className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
                           style={{ color: p.color, backgroundColor: p.bg }}
@@ -333,25 +288,12 @@ export default function AnnouncementsView() {
                       )}
                       <div className="flex items-center gap-4 mt-3">
                         <span className="text-xs text-gray-300 font-medium">{a.date}</span>
-                        <div className="ml-auto flex items-center gap-1">
-                          <button
-                            onClick={() => openEdit(a)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#516D9A] bg-[#516D9A]/8 hover:bg-[#516D9A]/15 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(a.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Delete
-                          </button>
+                        <div className="ml-auto">
+                          <ItemActions
+                            section="announcements"
+                            onEdit={() => openEdit(a)}
+                            onDelete={() => setDeleteConfirmId(a.id)}
+                          />
                         </div>
                       </div>
                     </div>
@@ -364,40 +306,12 @@ export default function AnnouncementsView() {
 
       </div>
 
-      {/* DELETE CONFIRM MODAL */}
       {deleteConfirmId !== null && (
-        <>
-          <div className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#4A4A4A]">Delete announcement?</h3>
-                  <p className="text-sm text-gray-400 mt-1">This action cannot be undone.</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirmId)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
+        <DeleteConfirmModal
+          entityName="announcement"
+          onConfirm={() => handleDelete(deleteConfirmId)}
+          onCancel={() => setDeleteConfirmId(null)}
+        />
       )}
     </div>
   );

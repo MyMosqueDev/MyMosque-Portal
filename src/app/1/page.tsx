@@ -12,7 +12,7 @@ export default function Page1() {
       {/* ── NAV ── */}
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 lg:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="MyMosque" className="h-9 w-9" />
+          <img src="/logo.png" alt="MyMosque" className="h-9 w-9 rounded-lg" />
           <span className="text-xl font-bold tracking-tight text-[#699A51]">MyMosque</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-[#4A4A4A]/80">
@@ -263,7 +263,7 @@ export default function Page1() {
           <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-white/5" />
           <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-white/5" />
           <div className="relative z-10">
-            <img src="/logo.png" alt="MyMosque" className="w-20 h-20 mx-auto mb-6 drop-shadow-xl" />
+            <img src="/logo.png" alt="MyMosque" className="w-20 h-20 mx-auto mb-6 drop-shadow-xl rounded-lg" />
             <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-5 leading-tight">
               Ready to bring your mosque closer together?
             </h2>
@@ -292,7 +292,7 @@ export default function Page1() {
       <footer className="relative z-10 bg-[#2d2d2d] text-white py-12 px-6 lg:px-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="MyMosque" className="h-8 w-8 opacity-80" />
+            <img src="/logo.png" alt="MyMosque" className="h-8 w-8 opacity-80 rounded-lg" />
             <span className="font-bold text-lg">MyMosque</span>
           </div>
           <p className="text-white/40 text-sm text-center">

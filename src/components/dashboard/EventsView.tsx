@@ -1,77 +1,19 @@
 "use client";
 
 import { useState } from "react";
-
-interface Event {
-  id: number;
-  title: string;
-  body: string;
-  image: string | null;
-  date: string;
-  time: string;
-  location: string;
-  host: string;
-}
-
-const MOCK_EVENTS: Event[] = [
-  {
-    id: 1,
-    title: "Ramadan Iftar Night",
-    body: "Join us for a community Iftar dinner to break fast together. All are welcome. Food will be provided — please RSVP so we can plan accordingly.",
-    image: null,
-    date: "2026-03-20",
-    time: "18:30",
-    location: "Banquet Hall",
-    host: "Islamic Center",
-  },
-  {
-    id: 2,
-    title: "Tarawih Prayers",
-    body: "Nightly Tarawih prayers will be led by Sheikh Ibrahim throughout the month of Ramadan. Doors open 15 minutes before prayer.",
-    image: null,
-    date: "2026-03-17",
-    time: "21:00",
-    location: "Main Hall",
-    host: "Sheikh Ibrahim",
-  },
-  {
-    id: 3,
-    title: "Youth Halaqa",
-    body: "A weekly gathering for youth ages 13–25 to discuss Islamic topics, current events, and community service opportunities.",
-    image: "/nueces.jpg",
-    date: "2026-03-22",
-    time: "15:00",
-    location: "Room 4",
-    host: "Brother Yusuf",
-  },
-  {
-    id: 4,
-    title: "Sisters' Quran Circle",
-    body: "A warm and welcoming space for sisters to recite, memorize, and reflect on the Quran together. All levels are welcome.",
-    image: null,
-    date: "2026-03-24",
-    time: "19:00",
-    location: "Room 2",
-    host: "Sister Fatima",
-  },
-  {
-    id: 5,
-    title: "Zakat Calculation Workshop",
-    body: "Sheikh Hassan will walk through the nisab threshold, applicable assets, and how to direct your Zakat locally. Free to attend.",
-    image: null,
-    date: "2026-03-10",
-    time: "18:00",
-    location: "Conference Room A",
-    host: "Sheikh Hassan",
-  },
-];
+import ImageUploader from "./ui/ImageUploader";
+import DeleteConfirmModal from "./ui/DeleteConfirmModal";
+import InlineFormCard from "./ui/InlineFormCard";
+import ItemActions from "./ui/ItemActions";
+import EmptyState from "./ui/EmptyState";
+import { type Event, MOCK_EVENTS } from "@/lib/events-data";
 
 type FilterTab = "all" | "upcoming" | "past";
 
 const emptyForm = {
   title: "",
   body: "",
-  image: null as string | null,
+  image: "" as string,
   date: "",
   time: "",
   location: "",
@@ -105,7 +47,6 @@ export default function EventsView() {
   const [editingId, setEditingId]             = useState<number | null>(null);
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const [imageFileName, setImageFileName]     = useState<string | null>(null);
 
   const filtered =
     activeFilter === "all"
@@ -121,14 +62,12 @@ export default function EventsView() {
   function openCreate() {
     setEditingId(null);
     setForm(emptyForm);
-    setImageFileName(null);
     setShowInlineForm(true);
   }
 
   function openEdit(ev: Event) {
     setEditingId(ev.id);
     setForm({ title: ev.title, body: ev.body, image: ev.image, date: ev.date, time: ev.time, location: ev.location, host: ev.host });
-    setImageFileName(ev.image ? "existing-image.jpg" : null);
     setShowInlineForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -137,7 +76,6 @@ export default function EventsView() {
     setShowInlineForm(false);
     setEditingId(null);
     setForm(emptyForm);
-    setImageFileName(null);
   }
 
   function handleSave() {
@@ -158,20 +96,12 @@ export default function EventsView() {
     setDeleteConfirmId(null);
   }
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFileName(file.name);
-      setForm((f) => ({ ...f, image: URL.createObjectURL(file) }));
-    }
-  }
-
   const isFormValid =
     form.title.trim().length > 0 &&
     form.body.trim().length > 0 &&
     form.date.length > 0 &&
     form.time.length > 0 &&
-    form.image !== null;
+    form.image.length > 0;
 
   const tabs: { key: FilterTab; label: string }[] = [
     { key: "all",      label: "All"      },
@@ -186,12 +116,12 @@ export default function EventsView() {
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-extrabold text-[#4A4A4A]">Events</h1>
+            <h1 className="text-xl font-extrabold text-mosque-text">Events</h1>
             <p className="text-sm text-gray-400 mt-0.5">{events.length} total</p>
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-1.5 bg-[#516D9A] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#455f87] transition-colors shadow-sm"
+            className="flex items-center gap-1.5 bg-mosque-blue text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-mosque-blue-dark transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -201,125 +131,91 @@ export default function EventsView() {
         </div>
 
         {/* Inline create/edit form */}
-        <div
-          className="overflow-hidden transition-all duration-300 ease-in-out"
-          style={{ maxHeight: showInlineForm ? "1100px" : "0px" }}
+        <InlineFormCard
+          visible={showInlineForm}
+          title={editingId !== null ? "Edit Event" : "New Event"}
+          onClose={closeForm}
+          maxHeight={1100}
         >
-          <div className="bg-white rounded-2xl shadow-sm mb-4 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <p className="text-sm font-bold text-[#4A4A4A]">
-                {editingId !== null ? "Edit Event" : "New Event"}
-              </p>
-              <button
-                onClick={closeForm}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-[#4A4A4A] transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+          <div className="flex gap-3 items-stretch">
+            <div className="flex-1 flex flex-col gap-3">
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="Title *"
+                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
+              />
+              <textarea
+                value={form.body}
+                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+                placeholder="Description *"
+                rows={3}
+                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors resize-none leading-relaxed flex-1"
+              />
             </div>
-            <div className="px-5 py-5 flex flex-col gap-4">
-              <div className="flex gap-3 items-stretch">
-                <div className="flex-1 flex flex-col gap-3">
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    placeholder="Title *"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#516D9A]/40 focus:border-[#516D9A] transition-colors"
-                  />
-                  <textarea
-                    value={form.body}
-                    onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-                    placeholder="Description *"
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#516D9A]/40 focus:border-[#516D9A] transition-colors resize-none leading-relaxed flex-1"
-                  />
-                </div>
-                <div className="relative w-40 shrink-0">
-                  <label
-                    className="flex flex-col items-center justify-center h-full min-h-[148px] rounded-xl border-2 border-dashed cursor-pointer transition-colors overflow-hidden bg-gray-50 relative"
-                    style={form.image ? { borderColor: "transparent" } : { borderColor: "#E5E7EB" }}
-                  >
-                    {form.image ? (
-                      <img src={form.image} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5 px-3 text-center">
-                        <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-xs text-gray-300 font-medium leading-tight">Image *</span>
-                      </div>
-                    )}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                  </label>
-                  {form.image && (
-                    <button
-                      onClick={() => { setImageFileName(null); setForm((f) => ({ ...f, image: null })); }}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"
-                    >
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Date *</label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] focus:outline-none focus:ring-2 focus:ring-[#516D9A]/40 focus:border-[#516D9A] transition-colors"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Time *</label>
-                  <input
-                    type="time"
-                    value={form.time}
-                    onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-                    className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] focus:outline-none focus:ring-2 focus:ring-[#516D9A]/40 focus:border-[#516D9A] transition-colors"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  value={form.location}
-                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                  placeholder="Location"
-                  className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#516D9A]/40 focus:border-[#516D9A] transition-colors"
-                />
-                <input
-                  type="text"
-                  value={form.host}
-                  onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))}
-                  placeholder="Host"
-                  className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#4A4A4A] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#516D9A]/40 focus:border-[#516D9A] transition-colors"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  onClick={closeForm}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={!isFormValid}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#516D9A] hover:bg-[#455f87] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {editingId !== null ? "Save" : "Create"}
-                </button>
-              </div>
+            <ImageUploader
+              image={form.image}
+              onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+              onClear={() => setForm((f) => ({ ...f, image: "" }))}
+              label="Image *"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-neutral-inactive uppercase tracking-wide">Date *</label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                className="border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-neutral-inactive uppercase tracking-wide">Time *</label>
+              <input
+                type="time"
+                value={form.time}
+                onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
+                className="border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
+              />
             </div>
           </div>
-        </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={form.location}
+              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+              placeholder="Location"
+              className="border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
+            />
+            <input
+              type="text"
+              value={form.host}
+              onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))}
+              placeholder="Host"
+              className="border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={closeForm}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!isFormValid}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-blue hover:bg-mosque-blue-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {editingId !== null ? "Save" : "Create"}
+            </button>
+          </div>
+        </InlineFormCard>
 
         {/* Filter tabs */}
         <div className="flex items-center gap-1.5 mb-4 flex-wrap">
@@ -338,8 +234,8 @@ export default function EventsView() {
                 className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all border"
                 style={
                   isActive
-                    ? { color: "#516D9A", backgroundColor: "#EEF1F7", borderColor: "#516D9A" }
-                    : { color: "#9CA3AF", backgroundColor: "white", borderColor: "#E5E7EB" }
+                    ? { color: "var(--mosque-blue)", backgroundColor: "var(--mosque-blue-subtle)", borderColor: "var(--mosque-blue)" }
+                    : { color: "var(--neutral-inactive)", backgroundColor: "white", borderColor: "var(--neutral-border)" }
                 }
               >
                 {tab.label}
@@ -354,14 +250,14 @@ export default function EventsView() {
         {/* Event list */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {sorted.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-16 text-center px-4">
-              <p className="font-semibold text-[#4A4A4A]">No events</p>
-              <p className="text-sm text-gray-400">
-                {activeFilter === "all"
+            <EmptyState
+              title="No events"
+              description={
+                activeFilter === "all"
                   ? "Create your first event above."
-                  : `No ${activeFilter} events.`}
-              </p>
-            </div>
+                  : `No ${activeFilter} events.`
+              }
+            />
           ) : (
             sorted.map((ev, idx) => {
               const upcoming = isUpcoming(ev.date);
@@ -375,19 +271,20 @@ export default function EventsView() {
                   className={`px-5 py-4 ${!isLast ? "border-b border-gray-100" : ""}`}
                 >
                   <div className="flex items-start gap-4">
+                    {/* Date tile */}
                     <div
                       className="shrink-0 w-11 h-11 rounded-xl flex flex-col items-center justify-center"
-                      style={{ backgroundColor: upcoming ? "#EEF1F7" : "#F3F4F6" }}
+                      style={{ backgroundColor: upcoming ? "var(--mosque-blue-subtle)" : "var(--neutral-past)" }}
                     >
                       <span
                         className="text-[9px] font-bold uppercase leading-none"
-                        style={{ color: upcoming ? "#516D9A" : "#9CA3AF" }}
+                        style={{ color: upcoming ? "var(--mosque-blue)" : "var(--neutral-inactive)" }}
                       >
                         {monthStr}
                       </span>
                       <span
                         className="text-base font-extrabold leading-none mt-0.5"
-                        style={{ color: upcoming ? "#516D9A" : "#9CA3AF" }}
+                        style={{ color: upcoming ? "var(--mosque-blue)" : "var(--neutral-inactive)" }}
                       >
                         {dayStr}
                       </span>
@@ -395,9 +292,9 @@ export default function EventsView() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-[#4A4A4A] leading-snug">{ev.title}</span>
+                        <span className="font-semibold text-sm text-mosque-text leading-snug">{ev.title}</span>
                         {!upcoming && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-past text-neutral-inactive">
                             Past
                           </span>
                         )}
@@ -405,11 +302,9 @@ export default function EventsView() {
 
                       <p className="text-sm text-gray-500 leading-relaxed mt-1.5">{ev.body}</p>
 
-                      {ev.image && (
-                        <div className="mt-3 rounded-xl overflow-hidden h-32 w-48">
-                          <img src={ev.image} alt="Event" className="w-full h-full object-cover" />
-                        </div>
-                      )}
+                      <div className="mt-3 rounded-xl overflow-hidden h-32 w-48">
+                        <img src={ev.image} alt="Event" className="w-full h-full object-cover" />
+                      </div>
 
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2.5">
                         <span className="flex items-center gap-1 text-xs text-gray-400">
@@ -437,25 +332,23 @@ export default function EventsView() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1 mt-3">
-                        <button
-                          onClick={() => openEdit(ev)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#516D9A] bg-[#516D9A]/8 hover:bg-[#516D9A]/15 transition-colors"
+                      <div className="mt-3 flex items-center gap-2 flex-wrap">
+                        <ItemActions
+                          section="events"
+                          onEdit={() => openEdit(ev)}
+                          onDelete={() => setDeleteConfirmId(ev.id)}
+                        />
+                        <a
+                          href={`/events/${ev.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirmId(ev.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Delete
-                        </button>
+                          View page
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -467,40 +360,12 @@ export default function EventsView() {
 
       </div>
 
-      {/* DELETE CONFIRM MODAL */}
       {deleteConfirmId !== null && (
-        <>
-          <div className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#4A4A4A]">Delete event?</h3>
-                  <p className="text-sm text-gray-400 mt-1">This action cannot be undone.</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirmId)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
+        <DeleteConfirmModal
+          entityName="event"
+          onConfirm={() => handleDelete(deleteConfirmId)}
+          onCancel={() => setDeleteConfirmId(null)}
+        />
       )}
     </div>
   );

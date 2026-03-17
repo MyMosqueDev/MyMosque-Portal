@@ -5,7 +5,7 @@ export default function LoginPage() {
       {/* Nav */}
       <nav className="flex items-center justify-between px-8 lg:px-16 py-6 border-b border-gray-100">
         <a href="/" className="flex items-center gap-3">
-          <img src="/logo.png" alt="MyMosque" className="h-9 w-9" />
+          <img src="/logo.png" alt="MyMosque" className="h-9 w-9 rounded-lg" />
           <span className="text-xl font-bold text-[#4A4A4A]">MyMosque</span>
         </a>
         <a
