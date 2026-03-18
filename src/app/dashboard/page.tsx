@@ -13,7 +13,6 @@ const navItems: { label: string; view: View | null }[] = [
   { label: "Announcements", view: "announcements" },
   { label: "Events",        view: "events"        },
   { label: "Prayer Times",  view: "prayer-times"  },
-  { label: "Settings",      view: null            },
 ];
 
 export default function DashboardPage() {
