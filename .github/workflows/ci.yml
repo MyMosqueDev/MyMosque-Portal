@@ -38,17 +38,21 @@ jobs:
 
       - name: Provision Branch Database & Run Migrations
         run: |
-          # Load DATABASE_URL and DIRECT_URL from Vercel (base URLs, no /dbname yet)
+          # Load variables
           export $(grep -v '^#' .vercel/.env.preview.local | xargs)
 
-          # Provision the branch database using the admin postgres DB
+          # Strip the trailing "/postgres" from the base URLs
+          BASE_DATABASE_URL=$(echo "$DATABASE_URL" | sed 's/\/[^/]*$//')
+          BASE_DIRECT_URL=$(echo "$DIRECT_URL" | sed 's/\/[^/]*$//')
+
+          # Provision using the default admin database (DIRECT_URL)
           echo "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();" | psql $DIRECT_URL
           echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql $DIRECT_URL
           echo "CREATE DATABASE \"$DB_NAME\"" | psql $DIRECT_URL
 
-          # Point Prisma at the new branch database
-          export DATABASE_URL=$DATABASE_URL/$DB_NAME
-          export DIRECT_URL=$DIRECT_URL/$DB_NAME
+          # Assign the cleanly formatted URLs for Prisma
+          export DATABASE_URL="$BASE_DATABASE_URL/$DB_NAME"
+          export DIRECT_URL="$BASE_DIRECT_URL/$DB_NAME"
 
           npx prisma generate
           npx prisma migrate deploy
@@ -57,5 +61,10 @@ jobs:
       - name: Deploy to Vercel Preview
         run: |
           export $(grep -v '^#' .vercel/.env.preview.local | xargs)
-          export DATABASE_URL=$DATABASE_URL/$DB_NAME
-          npx vercel@latest deploy --token=$VERCEL_TOKEN --build-env DATABASE_URL=$DATABASE_URL --env DATABASE_URL=$DATABASE_URL
+          
+          # Strip the trailing "/postgres" for the deployment step too
+          BASE_DATABASE_URL=$(echo "$DATABASE_URL" | sed 's/\/[^/]*$//')
+          export NEW_DATABASE_URL="$BASE_DATABASE_URL/$DB_NAME"
+          
+          # Pass the clean URL to Vercel for both build-time and run-time
+          npx vercel@latest deploy --token=$VERCEL_TOKEN --build-env DATABASE_URL=$NEW_DATABASE_URL --env DATABASE_URL=$NEW_DATABASE_URL
