@@ -15,7 +15,7 @@ jobs:
     env:
       # Base Supabase connection strings (store these in GitHub Secrets)
       # e.g., postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT.supabase.co:5432
-      BASE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       
       # Vercel CLI authentication (store in GitHub Secrets)
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -45,9 +45,9 @@ jobs:
       - name: Provision Branch Database
         # Uses the default postgres database to run the DROP/CREATE commands
         run: |
-          export PGPASSWORD=$(echo $BASE_DATABASE_URL | sed -n 's/.*:\([^@]*\)@.*/\1/p')
-          export PGHOST=$(echo $BASE_DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
-          export PGUSER=$(echo $BASE_DATABASE_URL | sed -n 's/.*postgres:\/\/\([^:]*\):.*/\1/p')
+          export PGPASSWORD=$(echo $DATABASE_URL | sed -n 's/.*:\([^@]*\)@.*/\1/p')
+          export PGHOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+          export PGUSER=$(echo $DATABASE_URL | sed -n 's/.*postgres:\/\/\([^:]*\):.*/\1/p')
           export PGPORT=5432
 
           echo "Dropping existing database if it exists..."
@@ -59,16 +59,16 @@ jobs:
       - name: Run Prisma Migrations & Seed
         run: |
           # Append the new database name to the base URL
-          export DATABASE_URL="${BASE_DATABASE_URL}/${DB_NAME}"
-          export DIRECT_URL="${BASE_DATABASE_URL}/${DB_NAME}"
+          export DATABASE_URL="${DATABASE_URL}/${DB_NAME}"
+          export DIRECT_URL="${DATABASE_URL}/${DB_NAME}"
           
           npx prisma generate
           npx prisma migrate deploy
           npx prisma db seed
         env:
           # Expose it specifically for this step
-          DATABASE_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
-          DIRECT_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
+          DIRECT_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
 
       - name: Deploy to Vercel Preview
         run: |
@@ -82,5 +82,5 @@ jobs:
           vercel deploy --prebuilt --token=$VERCEL_TOKEN
         env:
           # This ensures the Vercel build uses the newly created database
-          DATABASE_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
-          DIRECT_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
+          DIRECT_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
