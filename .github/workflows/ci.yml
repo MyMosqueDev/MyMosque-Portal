@@ -1,6 +1,9 @@
 name: Preview Deployment
 
 on:
+  push:
+    branches-ignore:
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -36,7 +39,7 @@ jobs:
       - name: Set up Branch Database Name
         # Replaces invalid characters (like /) with underscores for the DB name
         run: |
-          BRANCH_NAME=$(echo "${{ github.head_ref }}" | tr -cd '[:alnum:]_')
+          BRANCH_NAME=$(echo "${{ github.head_ref || github.ref_name }}" | tr -cd '[:alnum:]_')
           echo "DB_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
       - name: Provision Branch Database
