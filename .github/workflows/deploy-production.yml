@@ -38,11 +38,18 @@ jobs:
           npx prisma generate
           npx prisma migrate deploy
 
+      - name: Debug Vercel Env Vars
+        run: |
+          set -a; source .vercel/.env.production.local; set +a
+          echo "DATABASE_URL from Vercel pull: $DATABASE_URL"
+          echo "First 30 chars: ${DATABASE_URL:0:30}"
+
       - name: Deploy to Vercel (staging URL)
         id: deploy
         run: |
           set -a; source .vercel/.env.production.local; set +a
           npx vercel@latest deploy --token=$VERCEL_TOKEN \
+            --target=production \
             --build-env DATABASE_URL="$DATABASE_URL" \
             --env DATABASE_URL="$DATABASE_URL" | tee deploy-url.txt
           echo "url=$(tail -1 deploy-url.txt)" >> $GITHUB_OUTPUT
