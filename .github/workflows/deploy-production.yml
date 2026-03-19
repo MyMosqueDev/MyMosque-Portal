@@ -2,10 +2,9 @@ name: Production Deployment
 
 on:
   push:
-      branches:
-        - main
-        - rewrite
-  # workflow_dispatch:
+    branches:
+      - main
+      - rewrite
 
 jobs:
   deploy-staging:
@@ -45,18 +44,16 @@ jobs:
           set -a; source .vercel/.env.production.local; set +a
           npx vercel@latest deploy --token=$VERCEL_TOKEN \
             --build-env DATABASE_URL="$DATABASE_URL" \
-            --build-env NODE_ENV="production" \
-            --env DATABASE_URL="$DATABASE_URL" \
-            --env NODE_ENV="production" | tee deploy-url.txt
+            --env DATABASE_URL="$DATABASE_URL" | tee deploy-url.txt
           echo "url=$(tail -1 deploy-url.txt)" >> $GITHUB_OUTPUT
 
-  # deploy-production:
-  #   name: Deploy to Vercel Production
+  # promote-production:
+  #   name: Promote to Production URL
   #   needs: deploy-staging
   #   runs-on: ubuntu-latest
   #   environment:
   #     name: production
-  #     url: ${{ steps.deploy.outputs.url }}
+  #     url: https://${{ secrets.DOMAIN_NAME }}
 
   #   env:
   #     VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -64,21 +61,7 @@ jobs:
   #     VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
   #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #         cache: npm
-
-  #     - name: Install dependencies
-  #       run: npm ci
-
-  #     - name: Pull Vercel Production Environment Variables
-  #       run: npx vercel@latest pull --yes --environment=production --token=$VERCEL_TOKEN
-
-  #     - name: Deploy to Vercel Production
-  #       id: deploy
+  #     - name: Alias staging deployment to production domain
   #       run: |
-  #         npx vercel@latest deploy --prod --token=$VERCEL_TOKEN | tee deploy-url.txt
-  #         echo "url=$(tail -1 deploy-url.txt)" >> $GITHUB_OUTPUT
+  #         npx vercel@latest alias --token=$VERCEL_TOKEN \
+  #           set ${{ needs.deploy-staging.outputs.url }} ${{ secrets.DOMAIN_NAME }}
