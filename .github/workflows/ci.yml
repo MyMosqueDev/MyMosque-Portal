@@ -13,11 +13,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Base Supabase connection strings (store these in GitHub Secrets)
-      # e.g., postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT.supabase.co:5432
-      BASE_DATABASE_URL: ${{ secrets.BASE_DATABASE_URL }}
-      
-      # Vercel CLI authentication (store in GitHub Secrets)
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -33,54 +28,33 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Vercel CLI
-        run: npm install -g vercel
-
       - name: Set up Branch Database Name
-        # Replaces invalid characters (like /) with underscores for the DB name
         run: |
           BRANCH_NAME=$(echo "${{ github.head_ref || github.ref_name }}" | tr -cd '[:alnum:]_')
           echo "DB_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
-      - name: Provision Branch Database
-        # Uses the default postgres database to run the DROP/CREATE commands
-        run: |
-          export PGPASSWORD=$(echo $BASE_DATABASE_URL | sed -n 's/.*:\([^@]*\)@.*/\1/p')
-          export PGHOST=$(echo $BASE_DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
-          export PGUSER=$(echo $BASE_DATABASE_URL | sed -n 's/.*postgres:\/\/\([^:]*\):.*/\1/p')
-          export PGPORT=5432
+      - name: Pull Vercel Environment Variables
+        run: npx vercel@latest pull --yes --environment=preview --token=$VERCEL_TOKEN
 
-          echo "Dropping existing database if it exists..."
-          psql -h $PGHOST -U $PGUSER -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
-          
-          echo "Creating new database for branch..."
-          psql -h $PGHOST -U $PGUSER -d postgres -c "CREATE DATABASE \"$DB_NAME\";"
-
-      - name: Run Prisma Migrations & Seed
+      - name: Provision Branch Database & Run Migrations
         run: |
-          # Append the new database name to the base URL
-          export DATABASE_URL="${BASE_DATABASE_URL}/${DB_NAME}"
-          export DIRECT_URL="${BASE_DATABASE_URL}/${DB_NAME}"
-          
+          # Load DATABASE_URL and DIRECT_URL from Vercel (base URLs, no /dbname yet)
+          export $(grep -v '^#' .vercel/.env.preview.local | xargs)
+
+          # Provision the branch database using the admin postgres DB
+          echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql $DATABASE_URL/postgres
+          echo "CREATE DATABASE \"$DB_NAME\"" | psql $DATABASE_URL/postgres
+
+          # Point Prisma at the new branch database
+          export DATABASE_URL=$DATABASE_URL/$DB_NAME
+          export DIRECT_URL=$DIRECT_URL/$DB_NAME
+
           npx prisma generate
           npx prisma migrate deploy
           npx prisma db seed
-        env:
-          # Expose it specifically for this step
-          DATABASE_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
-          DIRECT_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
 
       - name: Deploy to Vercel Preview
         run: |
-          # Pull Vercel environment variables
-          vercel env pull .env.preview.local --environment=preview --token=$VERCEL_TOKEN
-          
-          # Build with Turbopack/Next.js using the branch-specific DB URL
-          vercel build --token=$VERCEL_TOKEN
-          
-          # Deploy the prebuilt artifacts
-          vercel deploy --prebuilt --token=$VERCEL_TOKEN
-        env:
-          # This ensures the Vercel build uses the newly created database
-          DATABASE_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
-          DIRECT_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
+          export $(grep -v '^#' .vercel/.env.preview.local | xargs)
+          export DATABASE_URL=$DATABASE_URL/$DB_NAME
+          npx vercel@latest deploy --token=$VERCEL_TOKEN --env DATABASE_URL=$DATABASE_URL
