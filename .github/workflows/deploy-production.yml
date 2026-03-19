@@ -1,7 +1,11 @@
 name: Production Deployment
 
 on:
-  workflow_dispatch:
+  push:
+      branches:
+        - main
+        - rewrite
+  # workflow_dispatch:
 
 jobs:
   deploy-staging:
