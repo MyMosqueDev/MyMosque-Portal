@@ -38,16 +38,32 @@ jobs:
 
       - name: Provision Branch Database & Run Migrations
         run: |
-          # Load DATABASE_URL and DIRECT_URL from Vercel (base URLs, no /dbname yet)
           set -a; source .vercel/.env.preview.local; set +a
 
-          # Provision the branch database using the admin postgres DB
-          echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql $DATABASE_URL/postgres
-          echo "CREATE DATABASE \"$DB_NAME\"" | psql $DATABASE_URL/postgres
+          # Build branch-specific URLs by replacing the database name (handles ?pgbouncer=true etc.)
+          eval $(python3 -c "
+          from urllib.parse import urlparse, urlunparse
+          import os
+          db = os.environ['DB_NAME']
 
-          # Point Prisma at the new branch database
-          export DATABASE_URL=$DATABASE_URL/$DB_NAME
-          export DIRECT_URL=$DIRECT_URL/$DB_NAME
+          d = urlparse(os.environ['DIRECT_URL'])
+          branch_direct = urlunparse((d.scheme, d.netloc, '/' + db, '', '', ''))
+          admin_direct   = urlunparse((d.scheme, d.netloc, '/postgres', '', '', ''))
+
+          p = urlparse(os.environ['DATABASE_URL'])
+          branch_pooler = urlunparse((p.scheme, p.netloc, '/' + db, '', p.query, ''))
+
+          print('ADMIN_URL=' + admin_direct)
+          print('BRANCH_DIRECT_URL=' + branch_direct)
+          print('BRANCH_POOLER_URL=' + branch_pooler)
+          ")
+
+          # Use direct connection (not pgbouncer) for DDL
+          echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql "$ADMIN_URL"
+          echo "CREATE DATABASE \"$DB_NAME\""         | psql "$ADMIN_URL"
+
+          export DATABASE_URL=$BRANCH_POOLER_URL
+          export DIRECT_URL=$BRANCH_DIRECT_URL
 
           npx prisma generate
           npx prisma migrate deploy
@@ -56,5 +72,12 @@ jobs:
       - name: Deploy to Vercel Preview
         run: |
           set -a; source .vercel/.env.preview.local; set +a
-          export DATABASE_URL=$DATABASE_URL/$DB_NAME
-          npx vercel@latest deploy --token=$VERCEL_TOKEN --env DATABASE_URL=$DATABASE_URL
+
+          BRANCH_POOLER_URL=$(python3 -c "
+          from urllib.parse import urlparse, urlunparse
+          import os
+          p = urlparse(os.environ['DATABASE_URL'])
+          print(urlunparse((p.scheme, p.netloc, '/' + os.environ['DB_NAME'], '', p.query, '')))
+          ")
+
+          npx vercel@latest deploy --token=$VERCEL_TOKEN --env DATABASE_URL=$BRANCH_POOLER_URL
