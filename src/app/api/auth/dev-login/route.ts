@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") {
+  if (process.env.VERCEL_ENV === "production") {
     return NextResponse.json(
       { error: "Not available in production" },
       { status: 403 }
