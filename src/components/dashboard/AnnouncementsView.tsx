@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import ImageUploader from "./ui/ImageUploader";
 import DeleteConfirmModal from "./ui/DeleteConfirmModal";
@@ -8,6 +8,8 @@ import InlineFormCard from "./ui/InlineFormCard";
 import ItemActions from "./ui/ItemActions";
 import EmptyState from "./ui/EmptyState";
 import { trpc } from "@/trpc/react";
+import { getCache, setCache } from "@/lib/mosque-cache";
+import { friendlyError } from "@/lib/trpc-error";
 
 type Priority = "low" | "medium" | "high";
 
@@ -22,6 +24,7 @@ const emptyForm = {
   title: "",
   body: "",
   image: null as string | null,
+  imageFile: null as File | null,
   priority: "medium" as Priority,
 };
 
@@ -34,11 +37,22 @@ export default function AnnouncementsView() {
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const utils = trpc.useUtils();
+  const cached = getCache();
 
   const { data: announcements = [], isLoading, isError: isListError } =
-    trpc.mosque.listAnnouncements.useQuery();
+    trpc.mosque.listAnnouncements.useQuery(undefined, {
+      initialData: cached?.announcements?.length ? cached.announcements : undefined,
+      initialDataUpdatedAt: cached?.fetchedAt,
+    });
+
+  // Write fresh data back to cache
+  useEffect(() => {
+    console.log("announcements", announcements);
+    if (announcements.length) setCache({ announcements });
+  }, [announcements]);
 
   const createMutation = trpc.mosque.createAnnouncement.useMutation({
     onSuccess: () => {
@@ -47,7 +61,7 @@ export default function AnnouncementsView() {
       closeForm();
     },
     onError(err) {
-      toast.error(err.message ?? "Failed to create announcement");
+      toast.error(friendlyError(err));
     },
   });
 
@@ -58,7 +72,7 @@ export default function AnnouncementsView() {
       closeForm();
     },
     onError(err) {
-      toast.error(err.message ?? "Failed to update announcement");
+      toast.error(friendlyError(err));
     },
   });
 
@@ -69,7 +83,7 @@ export default function AnnouncementsView() {
       setDeleteConfirmId(null);
     },
     onError(err) {
-      toast.error(err.message ?? "Failed to delete announcement");
+      toast.error(friendlyError(err));
     },
   });
 
@@ -89,6 +103,7 @@ export default function AnnouncementsView() {
       title: a.title,
       body: a.description,
       image: a.image,
+      imageFile: null,
       priority: a.severity as Priority,
     });
     setShowInlineForm(true);
@@ -96,34 +111,60 @@ export default function AnnouncementsView() {
   }
 
   function closeForm() {
+    if (form.imageFile && form.image?.startsWith("blob:")) {
+      URL.revokeObjectURL(form.image);
+    }
     setShowInlineForm(false);
     setEditingId(null);
     setForm(emptyForm);
     setAttemptedSubmit(false);
   }
 
-  function handleSave() {
+  async function handleSave() {
     setAttemptedSubmit(true);
     if (!form.title.trim() || !form.body.trim()) return;
+
+    let imageUrl = form.image;
+    if (form.imageFile) {
+      setIsUploading(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", form.imageFile);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error(data.error ?? "Image upload failed");
+          return;
+        }
+        imageUrl = data.url;
+        URL.revokeObjectURL(form.image!);
+      } catch {
+        toast.error("Image upload failed");
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     if (editingId !== null) {
       updateMutation.mutate({
         id: editingId,
         title: form.title,
         description: form.body,
         severity: form.priority,
-        image: form.image,
+        image: imageUrl,
       });
     } else {
       createMutation.mutate({
         title: form.title,
         description: form.body,
         severity: form.priority,
-        image: form.image,
+        image: imageUrl,
       });
     }
   }
 
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isSaving = isUploading || createMutation.isPending || updateMutation.isPending;
 
   const tabs: { key: FilterTab; label: string }[] = [
     { key: "all",    label: "All"    },
@@ -189,9 +230,12 @@ export default function AnnouncementsView() {
               </div>
             </div>
             <ImageUploader
-              image={form.image}
-              onChange={(url) => setForm((f) => ({ ...f, image: url }))}
-              onClear={() => setForm((f) => ({ ...f, image: null }))}
+              previewUrl={form.image}
+              onFileSelect={(file, previewUrl) => setForm((f) => ({ ...f, image: previewUrl, imageFile: file }))}
+              onClear={() => {
+                if (form.imageFile && form.image?.startsWith("blob:")) URL.revokeObjectURL(form.image);
+                setForm((f) => ({ ...f, image: null, imageFile: null }));
+              }}
             />
           </div>
 
@@ -232,7 +276,7 @@ export default function AnnouncementsView() {
               disabled={isSaving}
               className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-green hover:bg-mosque-green-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isSaving ? "Saving…" : editingId !== null ? "Save" : "Post"}
+              {isUploading ? "Uploading…" : isSaving ? "Saving…" : editingId !== null ? "Save" : "Post"}
             </button>
           </div>
         </InlineFormCard>

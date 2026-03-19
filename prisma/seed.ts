@@ -8,11 +8,11 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   await prisma.mosque.upsert({
     where: {
-      id: "seed-mosque-1",
+      id: 1,
     },
     update: {},
     create: {
-      id: "seed-mosque-1",
+      id: 1,
       name: "Nueces Mosque",
       address: "1906 Nueces St, Austin, TX 78701",
       images: ["/nueces.jpg"],
@@ -50,11 +50,11 @@ async function main() {
   });
 
   await prisma.announcement.upsert({
-    where: { id: 1 },
+    where: { id: 0 },
     update: {},
     create: {
-      id: 1,
-      mosqueId: "seed-mosque-1",
+      id: 0,
+      mosqueId: 1,
       title: "Welcome to Nueces Mosque",
       description: "We are excited to welcome you to our community. Please check our website for upcoming events and prayer times.",
       severity: "medium",
@@ -64,11 +64,11 @@ async function main() {
   });
 
   await prisma.event.upsert({
-    where: { id: 1 },
+    where: { id: 0 },
     update: {},
     create: {
-      id: 1,
-      mosqueId: "seed-mosque-1",
+      id: 0,
+      mosqueId: 1,
       title: "Candid Convo - Defined By Revelation",
       description: "Join us for a Candid Convo Defined by Revelation as we explore masculinity and womanhood through the lens of the Qur'an and Sunnah.",
       date: new Date("2026-03-11T04:00:00Z"),
@@ -80,11 +80,11 @@ async function main() {
   });
 
   await prisma.prayerTime.upsert({
-    where: { id: 1 },
+    where: { id: 0 },
     update: {},
     create: {
-      id: 1,
-      mosqueId: "seed-mosque-1",
+      id: 0,
+      mosqueId: 1,
       mmYy: "03-26",
       prayerTimes: [
         { day: "01", times: { fajr: { adhan: "5:45 AM", iqama: "5:45 AM" }, dhuhr: { adhan: "12:20 PM", iqama: "12:20 PM" }, asr: { adhan: "3:53 PM", iqama: "3:53 PM" }, maghrib: { adhan: "5:30 PM", iqama: "5:30 PM" }, isha: { adhan: "6:50 PM", iqama: "6:50 PM" }, sunrise: "7:10 AM", sunset: "5:30 PM" } },

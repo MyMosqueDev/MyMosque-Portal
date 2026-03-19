@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { trpc } from "@/trpc/react";
+import { getCache, clearCache } from "@/lib/mosque-cache";
 import DashboardHome from "@/components/dashboard/DashboardHome";
 import AnnouncementsView from "@/components/dashboard/AnnouncementsView";
 import EventsView from "@/components/dashboard/EventsView";
@@ -20,10 +23,57 @@ export default function DashboardPage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [view, setView] = useState<View>("dashboard");
+  const utils = trpc.useUtils();
+  const hasShownUpdate = useRef(false);
+
+  const cached = getCache();
+  const mosque = trpc.mosque.getMe.useQuery(undefined, {
+    initialData: cached?.mosque ?? undefined,
+    initialDataUpdatedAt: cached?.fetchedAt,
+  });
+
+  // Background sync: on tab switch, check if server data is newer than local cache
+  useEffect(() => {
+    if (hasShownUpdate.current) return;
+    console.log("Background sync: checking for updates");
+
+    utils.mosque.getMe.fetch().then((fresh) => {
+      const cached = getCache();
+      if (!cached?.mosque || !fresh) return;
+
+      const isStale =
+        fresh.lastAnnouncement?.toString() !== cached.mosque.lastAnnouncement ||
+        fresh.lastEvent?.toString()        !== cached.mosque.lastEvent ||
+        fresh.lastPrayerTime?.toString()   !== cached.mosque.lastPrayerTime;
+
+      if (isStale) {
+        hasShownUpdate.current = true;
+        toast("Updates available", {
+          position: "bottom-right",
+          duration: Infinity,
+          action: {
+            label: "Refresh",
+            onClick: () => {
+              clearCache();
+              window.location.reload();
+            },
+          },
+        });
+      }
+    }).catch(() => {
+      // Background check failed — ignore silently
+    });
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
+  }
+
+  async function handleRefresh() {
+    clearCache();
+    await utils.mosque.invalidate();
+    toast.success("Synced", { duration: 2000 });
   }
 
   function navigate(v: View) {
@@ -78,12 +128,31 @@ export default function DashboardPage() {
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
-          <div className="flex items-center gap-2.5 px-2 mb-2">
+          <div
+            className="flex items-center gap-2.5 px-2 mb-2 group cursor-default"
+            title={mosque.data?.email ?? ""}
+          >
             <div className="w-8 h-8 rounded-full bg-mosque-blue flex items-center justify-center text-white text-xs font-bold select-none shrink-0">
-              A
+              {mosque.data?.name?.[0]?.toUpperCase() ?? "M"}
             </div>
-            <span className="text-xs text-gray-400 font-medium leading-tight">Admin</span>
+            <div className="min-w-0">
+              <span className="text-xs text-gray-300 font-medium leading-tight block truncate">
+                {mosque.data?.name ?? "Loading…"}
+              </span>
+              <span className="text-[10px] text-gray-500 leading-tight block truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                {mosque.data?.email ?? ""}
+              </span>
+            </div>
           </div>
+          <button
+            onClick={handleRefresh}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Sync
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/10 transition-colors"

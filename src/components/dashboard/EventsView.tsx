@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import ImageUploader from "./ui/ImageUploader";
 import DeleteConfirmModal from "./ui/DeleteConfirmModal";
@@ -8,6 +8,8 @@ import InlineFormCard from "./ui/InlineFormCard";
 import ItemActions from "./ui/ItemActions";
 import EmptyState from "./ui/EmptyState";
 import { trpc } from "@/trpc/react";
+import { getCache, setCache } from "@/lib/mosque-cache";
+import { friendlyError } from "@/lib/trpc-error";
 
 type FilterTab = "all" | "upcoming" | "past";
 
@@ -15,6 +17,7 @@ const emptyForm = {
   title: "",
   body: "",
   image: "" as string,
+  imageFile: null as File | null,
   date: "",
   time: "",
   location: "",
@@ -56,10 +59,23 @@ export default function EventsView() {
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const utils = trpc.useUtils();
+  const cached = getCache();
 
-  const { data: events = [], isLoading, isError: isListError } = trpc.mosque.listEvents.useQuery();
+  const { data: events = [], isLoading, isError: isListError } = trpc.mosque.listEvents.useQuery(
+    undefined,
+    {
+      initialData: cached?.events?.length ? cached.events : undefined,
+      initialDataUpdatedAt: cached?.fetchedAt,
+    }
+  );
+
+  // Write fresh data back to cache
+  useEffect(() => {
+    if (events.length) setCache({ events });
+  }, [events]);
 
   const createMutation = trpc.mosque.createEvent.useMutation({
     onSuccess: () => {
@@ -68,7 +84,7 @@ export default function EventsView() {
       closeForm();
     },
     onError(err) {
-      toast.error(err.message ?? "Failed to create event");
+      toast.error(friendlyError(err));
     },
   });
 
@@ -79,7 +95,7 @@ export default function EventsView() {
       closeForm();
     },
     onError(err) {
-      toast.error(err.message ?? "Failed to update event");
+      toast.error(friendlyError(err));
     },
   });
 
@@ -90,7 +106,7 @@ export default function EventsView() {
       setDeleteConfirmId(null);
     },
     onError(err) {
-      toast.error(err.message ?? "Failed to delete event");
+      toast.error(friendlyError(err));
     },
   });
 
@@ -118,6 +134,7 @@ export default function EventsView() {
       title: ev.title,
       body: ev.description,
       image: ev.image,
+      imageFile: null,
       date: dateStr,
       time: timeStr,
       location: ev.location,
@@ -128,6 +145,9 @@ export default function EventsView() {
   }
 
   function closeForm() {
+    if (form.imageFile && form.image?.startsWith("blob:")) {
+      URL.revokeObjectURL(form.image);
+    }
     setShowInlineForm(false);
     setEditingId(null);
     setForm(emptyForm);
@@ -143,9 +163,32 @@ export default function EventsView() {
     return null;
   }
 
-  function handleSave() {
+  async function handleSave() {
     setAttemptedSubmit(true);
     if (!form.title.trim() || !form.body.trim() || !form.date || !form.time || !form.image) return;
+
+    let imageUrl = form.image;
+    if (form.imageFile) {
+      setIsUploading(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", form.imageFile);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error(data.error ?? "Image upload failed");
+          return;
+        }
+        imageUrl = data.url;
+        URL.revokeObjectURL(form.image);
+      } catch {
+        toast.error("Image upload failed");
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     const isoDate = `${form.date}T${form.time}:00Z`;
     if (editingId !== null) {
       updateMutation.mutate({
@@ -155,7 +198,7 @@ export default function EventsView() {
         date: isoDate,
         host: form.host,
         location: form.location,
-        image: form.image,
+        image: imageUrl,
       });
     } else {
       createMutation.mutate({
@@ -164,12 +207,12 @@ export default function EventsView() {
         date: isoDate,
         host: form.host,
         location: form.location,
-        image: form.image,
+        image: imageUrl,
       });
     }
   }
 
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isSaving = isUploading || createMutation.isPending || updateMutation.isPending;
 
   const tabs: { key: FilterTab; label: string }[] = [
     { key: "all",      label: "All"      },
@@ -232,9 +275,12 @@ export default function EventsView() {
             </div>
             <div className="flex flex-col">
               <ImageUploader
-                image={form.image}
-                onChange={(url) => setForm((f) => ({ ...f, image: url }))}
-                onClear={() => setForm((f) => ({ ...f, image: "" }))}
+                previewUrl={form.image || null}
+                onFileSelect={(file, previewUrl) => setForm((f) => ({ ...f, image: previewUrl, imageFile: file }))}
+                onClear={() => {
+                  if (form.imageFile && form.image?.startsWith("blob:")) URL.revokeObjectURL(form.image);
+                  setForm((f) => ({ ...f, image: "", imageFile: null }));
+                }}
                 label="Image *"
               />
               {attemptedSubmit && !form.image && (
@@ -295,7 +341,7 @@ export default function EventsView() {
               disabled={isSaving}
               className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-blue hover:bg-mosque-blue-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isSaving ? "Saving…" : editingId !== null ? "Save" : "Create"}
+              {isUploading ? "Uploading…" : isSaving ? "Saving…" : editingId !== null ? "Save" : "Create"}
             </button>
           </div>
         </InlineFormCard>

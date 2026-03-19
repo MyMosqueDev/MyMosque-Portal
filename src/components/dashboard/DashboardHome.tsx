@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { trpc } from "@/trpc/react";
+import { getCache, setCache } from "@/lib/mosque-cache";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,13 +63,45 @@ function asPrayerEntries(record: any): PrayerEntry[] | null | undefined {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function DashboardHome() {
-  const mosque = trpc.mosque.getMe.useQuery();
-  const announcements = trpc.mosque.listAnnouncements.useQuery();
-  const events = trpc.mosque.listEvents.useQuery();
-  const prayerTimesRecord = trpc.mosque.getPrayerTimes.useQuery({
-    monthYear: getCurrentMonthYear(),
-  });
+  const monthYear = getCurrentMonthYear();
+  const cached = getCache();
 
+  const mosque = trpc.mosque.getMe.useQuery(undefined, {
+    initialData: cached?.mosque ?? undefined,
+    initialDataUpdatedAt: cached?.fetchedAt,
+  });
+  const announcements = trpc.mosque.listAnnouncements.useQuery(undefined, {
+    initialData: cached?.announcements?.length ? cached.announcements : undefined,
+    initialDataUpdatedAt: cached?.fetchedAt,
+  });
+  const events = trpc.mosque.listEvents.useQuery(undefined, {
+    initialData: cached?.events?.length ? cached.events : undefined,
+    initialDataUpdatedAt: cached?.fetchedAt,
+  });
+  const prayerTimesRecord = trpc.mosque.getPrayerTimes.useQuery(
+    { monthYear },
+    {
+      initialData: cached?.prayerTimes?.[monthYear] ?? undefined,
+      initialDataUpdatedAt: cached?.fetchedAt,
+    }
+  );
+
+  // Write fresh server data back to localStorage cache
+  useEffect(() => {
+    if (mosque.data) setCache({ mosque: mosque.data });
+  }, [mosque.data]);
+  useEffect(() => {
+    if (announcements.data) setCache({ announcements: announcements.data });
+  }, [announcements.data]);
+  useEffect(() => {
+    if (events.data) setCache({ events: events.data });
+  }, [events.data]);
+  useEffect(() => {
+    if (prayerTimesRecord.data) {
+      const existing = getCache()?.prayerTimes ?? {};
+      setCache({ prayerTimes: { ...existing, [monthYear]: prayerTimesRecord.data } });
+    }
+  }, [prayerTimesRecord.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isLoading =
     mosque.isLoading ||

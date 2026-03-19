@@ -14,7 +14,7 @@ datasource db {
 
 
 model Mosque {
-  id               String         @id @default(uuid())
+  id               Int            @id @default(autoincrement())
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   name             String
@@ -39,7 +39,7 @@ model Announcement {
   id          Int       @id @default(autoincrement())
   createdAt   DateTime  @default(now())
   updatedAt   DateTime? @updatedAt
-  mosqueId    String
+  mosqueId    Int
   mosque      Mosque    @relation(fields: [mosqueId], references: [id])
   title       String
   description String
@@ -52,7 +52,7 @@ model Event {
   id          Int       @id @default(autoincrement())
   createdAt   DateTime  @default(now())
   updatedAt   DateTime? @updatedAt
-  mosqueId    String
+  mosqueId    Int
   mosque      Mosque    @relation(fields: [mosqueId], references: [id])
   title       String
   description String
@@ -67,7 +67,7 @@ model PrayerTime {
   id          Int      @id @default(autoincrement())
   createdAt   DateTime @default(now())
   mmYy        String
-  mosqueId    String
+  mosqueId    Int
   mosque      Mosque   @relation(fields: [mosqueId], references: [id])
   prayerTimes Json
 }

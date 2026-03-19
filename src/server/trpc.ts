@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { db } from "@/lib/db";
 
 export type Context = {
-  mosqueId: string | null;
+  mosqueId: number | null;
 };
 
 function parseCookies(header: string): Record<string, string> {
@@ -55,7 +55,7 @@ export async function createContext(req: Request): Promise<Context> {
       const session = JSON.parse(
         Buffer.from(raw, "base64").toString("utf-8")
       );
-      if (typeof session.mosqueId === "string") {
+      if (typeof session.mosqueId === "number") {
         return { mosqueId: session.mosqueId };
       }
     } catch {

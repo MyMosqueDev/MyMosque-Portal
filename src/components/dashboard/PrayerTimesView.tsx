@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import ToggleSwitch from "./ui/ToggleSwitch";
 import { trpc } from "@/trpc/react";
+import { getCache, setCache } from "@/lib/mosque-cache";
+import { friendlyError } from "@/lib/trpc-error";
 
 type IqamaMode = "static" | "increment";
 interface PrayerConfig { mode: IqamaMode; staticTime: string; incrementMinutes: number; }
@@ -87,9 +89,19 @@ export default function PrayerTimesView() {
 
   const monthYear = getCurrentMonthYear();
   const utils = trpc.useUtils();
+  const cached = getCache();
 
-  const mosque = trpc.mosque.getMe.useQuery();
-  const prayerTimesRecord = trpc.mosque.getPrayerTimes.useQuery({ monthYear });
+  const mosque = trpc.mosque.getMe.useQuery(undefined, {
+    initialData: cached?.mosque ?? undefined,
+    initialDataUpdatedAt: cached?.fetchedAt,
+  });
+  const prayerTimesRecord = trpc.mosque.getPrayerTimes.useQuery(
+    { monthYear },
+    {
+      initialData: cached?.prayerTimes?.[monthYear] ?? undefined,
+      initialDataUpdatedAt: cached?.fetchedAt,
+    }
+  );
   const isGetMeError = mosque.isError;
   const isPrayerTimesError = prayerTimesRecord.isError;
 
@@ -100,6 +112,17 @@ export default function PrayerTimesView() {
   const savePrayerTimesMutation = trpc.mosque.savePrayerTimes.useMutation({
     onSuccess: () => utils.mosque.getPrayerTimes.invalidate({ monthYear }),
   });
+
+  // Write fresh mosque and prayer time data back to cache
+  useEffect(() => {
+    if (mosque.data) setCache({ mosque: mosque.data });
+  }, [mosque.data]);
+  useEffect(() => {
+    if (prayerTimesRecord.data) {
+      const existing = getCache()?.prayerTimes ?? {};
+      setCache({ prayerTimes: { ...existing, [monthYear]: prayerTimesRecord.data } });
+    }
+  }, [prayerTimesRecord.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize jummah from mosque data
   useEffect(() => {
@@ -141,8 +164,7 @@ export default function PrayerTimesView() {
       toast.success("Prayer times saved");
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save prayer times";
-      toast.error(message);
+      toast.error(friendlyError(err));
       console.error("[PrayerTimesView] handleSave error", err);
     } finally {
       setSaving(false);

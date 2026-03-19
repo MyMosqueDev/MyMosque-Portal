@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const session = Buffer.from(
-    JSON.stringify({ mosqueId: "seed-mosque-1" })
+    JSON.stringify({ mosqueId: 1 })
   ).toString("base64");
 
   const response = NextResponse.json({ ok: true });

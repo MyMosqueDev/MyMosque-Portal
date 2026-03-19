@@ -13,12 +13,18 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 1 * 60 * 1000,  // 5 min — no refetch on tab switch
+            gcTime:    10 * 60 * 1000, // 10 min — keep inactive queries in memory
+          },
+        },
         queryCache: new QueryCache({
           onError(error, query) {
             // Only toast for background refetch failures (not initial load errors
             // which are handled inline with isError states)
             if (query.state.data !== undefined) {
-              toast.error(error.message ?? "Something went wrong");
+              toast(error.message ?? "Something went wrong");
             }
           },
         }),

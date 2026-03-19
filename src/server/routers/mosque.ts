@@ -43,9 +43,15 @@ export const mosqueRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return db.announcement.create({
+      console.log("ctx.mosqueId", input);
+      const result = await db.announcement.create({
         data: { mosqueId: ctx.mosqueId, ...input, status: "published" },
       });
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastAnnouncement: new Date() },
+      });
+      return result;
     }),
 
   updateAnnouncement: authedProcedure
@@ -60,19 +66,29 @@ export const mosqueRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return db.announcement.update({
+      const result = await db.announcement.update({
         where: { id, mosqueId: ctx.mosqueId },
         data,
       });
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastAnnouncement: new Date() },
+      });
+      return result;
     }),
 
   deleteAnnouncement: authedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      return db.announcement.update({
+      const result = await db.announcement.update({
         where: { id: input.id, mosqueId: ctx.mosqueId },
         data: { status: "deleted" },
       });
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastAnnouncement: new Date() },
+      });
+      return result;
     }),
 
   // ── Events ────────────────────────────────────────────────────────────────
@@ -102,7 +118,7 @@ export const mosqueRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return db.event.create({
+      const result = await db.event.create({
         data: {
           mosqueId: ctx.mosqueId,
           title: input.title,
@@ -114,6 +130,11 @@ export const mosqueRouter = router({
           status: "published",
         },
       });
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastEvent: new Date() },
+      });
+      return result;
     }),
 
   updateEvent: authedProcedure
@@ -130,19 +151,29 @@ export const mosqueRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, date, ...rest } = input;
-      return db.event.update({
+      const result = await db.event.update({
         where: { id, mosqueId: ctx.mosqueId },
         data: { ...rest, date: new Date(date) },
       });
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastEvent: new Date() },
+      });
+      return result;
     }),
 
   deleteEvent: authedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      return db.event.update({
+      const result = await db.event.update({
         where: { id: input.id, mosqueId: ctx.mosqueId },
         data: { status: "deleted" },
       });
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastEvent: new Date() },
+      });
+      return result;
     }),
 
   // ── Prayer Times ──────────────────────────────────────────────────────────
@@ -166,18 +197,25 @@ export const mosqueRouter = router({
       const existing = await db.prayerTime.findFirst({
         where: { mosqueId: ctx.mosqueId, mmYy: input.monthYear },
       });
+      let result;
       if (existing) {
-        return db.prayerTime.update({
+        result = await db.prayerTime.update({
           where: { id: existing.id },
           data: { prayerTimes: input.prayerTimes },
         });
+      } else {
+        result = await db.prayerTime.create({
+          data: {
+            mosqueId: ctx.mosqueId,
+            mmYy: input.monthYear,
+            prayerTimes: input.prayerTimes,
+          },
+        });
       }
-      return db.prayerTime.create({
-        data: {
-          mosqueId: ctx.mosqueId,
-          mmYy: input.monthYear,
-          prayerTimes: input.prayerTimes,
-        },
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastPrayerTime: new Date() },
       });
+      return result;
     }),
 });
