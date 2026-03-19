@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardHome from "@/components/dashboard/DashboardHome";
 import AnnouncementsView from "@/components/dashboard/AnnouncementsView";
 import EventsView from "@/components/dashboard/EventsView";
@@ -16,8 +17,14 @@ const navItems: { label: string; view: View | null }[] = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [view, setView] = useState<View>("dashboard");
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  }
 
   function navigate(v: View) {
     setView(v);
@@ -70,11 +77,22 @@ export default function DashboardPage() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2.5 px-5 py-6 border-t border-white/10">
-          <div className="w-8 h-8 rounded-full bg-mosque-blue flex items-center justify-center text-white text-xs font-bold select-none shrink-0">
-            IA
+        <div className="px-3 py-4 border-t border-white/10">
+          <div className="flex items-center gap-2.5 px-2 mb-2">
+            <div className="w-8 h-8 rounded-full bg-mosque-blue flex items-center justify-center text-white text-xs font-bold select-none shrink-0">
+              A
+            </div>
+            <span className="text-xs text-gray-400 font-medium leading-tight">Admin</span>
           </div>
-          <span className="text-xs text-gray-400 font-medium leading-tight">Imam Abdullah</span>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign out
+          </button>
         </div>
       </aside>
 

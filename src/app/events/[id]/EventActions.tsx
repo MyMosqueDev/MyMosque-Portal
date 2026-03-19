@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { Event } from "@/lib/events-data";
 
 interface Props {
-  event: Event;
+  event: {
+    title: string;
+    description: string;
+    dateStr: string; // "YYYY-MM-DD"
+    timeStr: string; // "HH:MM"
+    location: string;
+  };
 }
 
 export default function EventActions({ event }: Props) {
@@ -18,8 +23,8 @@ export default function EventActions({ event }: Props) {
   }
 
   function handleAddToCalendar() {
-    const [h, m] = event.time.split(":").map(Number);
-    const dateNoHyphens = event.date.replace(/-/g, "");
+    const [h, m] = event.timeStr.split(":").map(Number);
+    const dateNoHyphens = event.dateStr.replace(/-/g, "");
     const endH = (h + 1) % 24;
     const start = `${dateNoHyphens}T${String(h).padStart(2, "0")}${String(m).padStart(2, "0")}00`;
     const end = `${dateNoHyphens}T${String(endH).padStart(2, "0")}${String(m).padStart(2, "0")}00`;
@@ -27,7 +32,7 @@ export default function EventActions({ event }: Props) {
     url.searchParams.set("action", "TEMPLATE");
     url.searchParams.set("text", event.title);
     url.searchParams.set("dates", `${start}/${end}`);
-    url.searchParams.set("details", event.body);
+    url.searchParams.set("details", event.description);
     if (event.location) url.searchParams.set("location", event.location);
     window.open(url.toString(), "_blank");
   }

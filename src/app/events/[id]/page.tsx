@@ -1,19 +1,20 @@
 import { notFound } from "next/navigation";
-import { MOCK_EVENTS } from "@/lib/events-data";
+import { serverCaller } from "@/trpc/server";
 import EventActions from "./EventActions";
 import EventImage from "./EventImage";
 
-function formatDateLong(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", {
+function formatDateLong(date: Date) {
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     month: "short",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
-function formatTime(timeStr: string) {
-  const [h, m] = timeStr.split(":").map(Number);
+function formatTime(date: Date) {
+  const h = date.getUTCHours();
+  const m = date.getUTCMinutes();
   const ampm = h >= 12 ? "pm" : "am";
   const hour = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, "0")}${ampm}`;
@@ -34,9 +35,11 @@ export default async function EventPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const event = MOCK_EVENTS.find((e) => e.id === Number(id));
+  const event = await serverCaller.mosque.getEvent({ id: Number(id) });
   if (!event) notFound();
 
+  const dateStr = event.date.toISOString().split("T")[0];
+  const timeStr = event.date.toISOString().split("T")[1].slice(0, 5);
   const initials = event.host ? getInitials(event.host) : "";
 
   return (
@@ -79,11 +82,19 @@ export default async function EventPage({
               <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {formatDateLong(event.date)}
               </p>
-              <p className="text-lg text-gray-600 mt-0.5">{formatTime(event.time)}</p>
+              <p className="text-lg text-gray-600 mt-0.5">{formatTime(event.date)}</p>
             </div>
 
             {/* Action icon buttons */}
-            <EventActions event={event} />
+            <EventActions
+              event={{
+                title: event.title,
+                description: event.description,
+                dateStr,
+                timeStr,
+                location: event.location,
+              }}
+            />
 
             {/* Hosted by */}
             {event.host && (
@@ -143,7 +154,7 @@ export default async function EventPage({
 
             {/* Description */}
             <p className="mt-7 text-gray-700 text-base leading-relaxed" style={{ maxWidth: "42ch" }}>
-              {event.body}
+              {event.description}
             </p>
           </div>
 

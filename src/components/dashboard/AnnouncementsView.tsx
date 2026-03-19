@@ -6,75 +6,62 @@ import DeleteConfirmModal from "./ui/DeleteConfirmModal";
 import InlineFormCard from "./ui/InlineFormCard";
 import ItemActions from "./ui/ItemActions";
 import EmptyState from "./ui/EmptyState";
+import { trpc } from "@/trpc/react";
 
 type Priority = "low" | "medium" | "high";
 
-interface Announcement {
-  id: number;
-  title: string;
-  body: string;
-  image: string | null;
-  priority: Priority;
-  date: string;
-}
-
-const MOCK_ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: 1,
-    title: "Ramadan Schedule Now Available",
-    body: "The full Tarawih and prayer schedule for Ramadan 1446 has been posted. Please check the app for daily timings, Iftar times, and Suhoor reminders. Tarawih will begin after Isha prayer each night.",
-    image: null,
-    priority: "high",
-    date: "Mar 15, 2026",
-  },
-  {
-    id: 2,
-    title: "Jumu'ah Khutbah: The Importance of Gratitude",
-    body: "This week's Jumu'ah khutbah will focus on the concept of shukr (gratitude) in daily life and how it connects us closer to Allah. The khutbah will be delivered by Sheikh Ibrahim at 1:15 PM.",
-    image: null,
-    priority: "medium",
-    date: "Mar 13, 2026",
-  },
-  {
-    id: 3,
-    title: "Zakat Calculation Workshop",
-    body: "Join us for a free workshop on calculating your annual Zakat. Sheikh Hassan will walk through the nisab threshold, applicable assets, and how to direct your Zakat locally.",
-    image: "/nueces.jpg",
-    priority: "low",
-    date: "Mar 10, 2026",
-  },
-  {
-    id: 4,
-    title: "Parking Notice: East Lot Closed",
-    body: "The east parking lot will be closed for resurfacing from March 18–20. Please use the main lot or street parking during this period. We apologize for the inconvenience.",
-    image: null,
-    priority: "medium",
-    date: "Mar 9, 2026",
-  },
-];
-
-// Colors pulled from CSS variables — no inline hex codes
+// Colors pulled from CSS variables
 const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bg: string }> = {
   high:   { label: "High",   color: "var(--priority-high)",    bg: "var(--priority-high-bg)"   },
   medium: { label: "Medium", color: "var(--priority-medium)",  bg: "var(--priority-medium-bg)" },
   low:    { label: "Low",    color: "var(--mosque-green)",     bg: "var(--mosque-green-subtle)" },
 };
 
-const emptyForm = { title: "", body: "", image: null as string | null, priority: "medium" as Priority };
+const emptyForm = {
+  title: "",
+  body: "",
+  image: null as string | null,
+  priority: "medium" as Priority,
+};
 
 type FilterTab = "all" | Priority;
 
 export default function AnnouncementsView() {
-  const [announcements, setAnnouncements]     = useState<Announcement[]>(MOCK_ANNOUNCEMENTS);
-  const [activeFilter, setActiveFilter]       = useState<FilterTab>("all");
+  const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
   const [showInlineForm, setShowInlineForm]   = useState(false);
   const [editingId, setEditingId]             = useState<number | null>(null);
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
+  const utils = trpc.useUtils();
+
+  const { data: announcements = [], isLoading } =
+    trpc.mosque.listAnnouncements.useQuery();
+
+  const createMutation = trpc.mosque.createAnnouncement.useMutation({
+    onSuccess: () => {
+      utils.mosque.listAnnouncements.invalidate();
+      closeForm();
+    },
+  });
+
+  const updateMutation = trpc.mosque.updateAnnouncement.useMutation({
+    onSuccess: () => {
+      utils.mosque.listAnnouncements.invalidate();
+      closeForm();
+    },
+  });
+
+  const deleteMutation = trpc.mosque.deleteAnnouncement.useMutation({
+    onSuccess: () => {
+      utils.mosque.listAnnouncements.invalidate();
+      setDeleteConfirmId(null);
+    },
+  });
+
   const filtered = activeFilter === "all"
     ? announcements
-    : announcements.filter((a) => a.priority === activeFilter);
+    : announcements.filter((a) => a.severity === activeFilter);
 
   function openCreate() {
     setEditingId(null);
@@ -82,9 +69,14 @@ export default function AnnouncementsView() {
     setShowInlineForm(true);
   }
 
-  function openEdit(a: Announcement) {
+  function openEdit(a: (typeof announcements)[number]) {
     setEditingId(a.id);
-    setForm({ title: a.title, body: a.body, image: a.image, priority: a.priority });
+    setForm({
+      title: a.title,
+      body: a.description,
+      image: a.image,
+      priority: a.severity as Priority,
+    });
     setShowInlineForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -97,23 +89,25 @@ export default function AnnouncementsView() {
 
   function handleSave() {
     if (!form.title.trim() || !form.body.trim()) return;
-    const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     if (editingId !== null) {
-      setAnnouncements((prev) =>
-        prev.map((a) => (a.id === editingId ? { ...a, ...form, date: today } : a))
-      );
+      updateMutation.mutate({
+        id: editingId,
+        title: form.title,
+        description: form.body,
+        severity: form.priority,
+        image: form.image,
+      });
     } else {
-      const newId = Math.max(0, ...announcements.map((a) => a.id)) + 1;
-      setAnnouncements((prev) => [{ id: newId, ...form, date: today }, ...prev]);
+      createMutation.mutate({
+        title: form.title,
+        description: form.body,
+        severity: form.priority,
+        image: form.image,
+      });
     }
-    closeForm();
   }
 
-  function handleDelete(id: number) {
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
-    setDeleteConfirmId(null);
-  }
-
+  const isSaving = createMutation.isPending || updateMutation.isPending;
   const isFormValid = form.title.trim().length > 0 && form.body.trim().length > 0;
 
   const tabs: { key: FilterTab; label: string }[] = [
@@ -131,7 +125,9 @@ export default function AnnouncementsView() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-extrabold text-mosque-text">Announcements</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{announcements.length} total</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {isLoading ? "Loading…" : `${announcements.length} total`}
+            </p>
           </div>
           <button
             onClick={openCreate}
@@ -208,10 +204,10 @@ export default function AnnouncementsView() {
             </button>
             <button
               onClick={handleSave}
-              disabled={!isFormValid}
+              disabled={!isFormValid || isSaving}
               className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-green hover:bg-mosque-green-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {editingId !== null ? "Save" : "Post"}
+              {isSaving ? "Saving…" : editingId !== null ? "Save" : "Post"}
             </button>
           </div>
         </InlineFormCard>
@@ -237,7 +233,7 @@ export default function AnnouncementsView() {
                 {tab.label}
                 {tab.key !== "all" && (
                   <span className="ml-1.5 opacity-70">
-                    {announcements.filter((a) => a.priority === tab.key).length}
+                    {announcements.filter((a) => a.severity === tab.key).length}
                   </span>
                 )}
               </button>
@@ -247,7 +243,11 @@ export default function AnnouncementsView() {
 
         {/* Announcement list */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="px-5 py-8 text-center text-sm text-gray-400">
+              Loading announcements…
+            </div>
+          ) : filtered.length === 0 ? (
             <EmptyState
               title="No announcements"
               description={
@@ -258,8 +258,14 @@ export default function AnnouncementsView() {
             />
           ) : (
             filtered.map((a, idx) => {
-              const p = PRIORITY_CONFIG[a.priority];
+              const priority = a.severity as Priority;
+              const p = PRIORITY_CONFIG[priority];
               const isLast = idx === filtered.length - 1;
+              const dateStr = new Date(a.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
               return (
                 <div
                   key={a.id}
@@ -272,7 +278,9 @@ export default function AnnouncementsView() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-mosque-text leading-snug">{a.title}</span>
+                        <span className="font-semibold text-sm text-mosque-text leading-snug">
+                          {a.title}
+                        </span>
                         <span
                           className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
                           style={{ color: p.color, backgroundColor: p.bg }}
@@ -280,14 +288,20 @@ export default function AnnouncementsView() {
                           {p.label}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 leading-relaxed mt-1.5">{a.body}</p>
+                      <p className="text-sm text-gray-500 leading-relaxed mt-1.5">
+                        {a.description}
+                      </p>
                       {a.image && (
                         <div className="mt-3 rounded-xl overflow-hidden h-32 w-48">
-                          <img src={a.image} alt="Announcement" className="w-full h-full object-cover" />
+                          <img
+                            src={a.image}
+                            alt="Announcement"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       )}
                       <div className="flex items-center gap-4 mt-3">
-                        <span className="text-xs text-gray-300 font-medium">{a.date}</span>
+                        <span className="text-xs text-gray-300 font-medium">{dateStr}</span>
                         <div className="ml-auto">
                           <ItemActions
                             section="announcements"
@@ -303,13 +317,12 @@ export default function AnnouncementsView() {
             })
           )}
         </div>
-
       </div>
 
       {deleteConfirmId !== null && (
         <DeleteConfirmModal
           entityName="announcement"
-          onConfirm={() => handleDelete(deleteConfirmId)}
+          onConfirm={() => deleteMutation.mutate({ id: deleteConfirmId })}
           onCancel={() => setDeleteConfirmId(null)}
         />
       )}

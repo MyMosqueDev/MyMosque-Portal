@@ -6,7 +6,7 @@ import DeleteConfirmModal from "./ui/DeleteConfirmModal";
 import InlineFormCard from "./ui/InlineFormCard";
 import ItemActions from "./ui/ItemActions";
 import EmptyState from "./ui/EmptyState";
-import { type Event, MOCK_EVENTS } from "@/lib/events-data";
+import { trpc } from "@/trpc/react";
 
 type FilterTab = "all" | "upcoming" | "past";
 
@@ -20,9 +20,17 @@ const emptyForm = {
   host: "",
 };
 
+// Extract YYYY-MM-DD and HH:MM from a DateTime (UTC)
+function splitDateTime(date: Date | string) {
+  const d = new Date(date);
+  const dateStr = d.toISOString().slice(0, 10);
+  const timeStr = d.toISOString().slice(11, 16);
+  return { dateStr, timeStr };
+}
+
 function formatDate(dateStr: string) {
   if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
+  const d = new Date(dateStr + "T00:00:00Z");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
@@ -34,19 +42,43 @@ function formatTime(timeStr: string) {
   return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-function isUpcoming(dateStr: string) {
+function isUpcoming(date: Date | string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return new Date(dateStr + "T00:00:00") >= today;
+  return new Date(date) >= today;
 }
 
 export default function EventsView() {
-  const [events, setEvents]                   = useState<Event[]>(MOCK_EVENTS);
   const [activeFilter, setActiveFilter]       = useState<FilterTab>("all");
   const [showInlineForm, setShowInlineForm]   = useState(false);
   const [editingId, setEditingId]             = useState<number | null>(null);
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
+  const utils = trpc.useUtils();
+
+  const { data: events = [], isLoading } = trpc.mosque.listEvents.useQuery();
+
+  const createMutation = trpc.mosque.createEvent.useMutation({
+    onSuccess: () => {
+      utils.mosque.listEvents.invalidate();
+      closeForm();
+    },
+  });
+
+  const updateMutation = trpc.mosque.updateEvent.useMutation({
+    onSuccess: () => {
+      utils.mosque.listEvents.invalidate();
+      closeForm();
+    },
+  });
+
+  const deleteMutation = trpc.mosque.deleteEvent.useMutation({
+    onSuccess: () => {
+      utils.mosque.listEvents.invalidate();
+      setDeleteConfirmId(null);
+    },
+  });
 
   const filtered =
     activeFilter === "all"
@@ -65,9 +97,18 @@ export default function EventsView() {
     setShowInlineForm(true);
   }
 
-  function openEdit(ev: Event) {
+  function openEdit(ev: (typeof events)[number]) {
     setEditingId(ev.id);
-    setForm({ title: ev.title, body: ev.body, image: ev.image, date: ev.date, time: ev.time, location: ev.location, host: ev.host });
+    const { dateStr, timeStr } = splitDateTime(ev.date);
+    setForm({
+      title: ev.title,
+      body: ev.description,
+      image: ev.image,
+      date: dateStr,
+      time: timeStr,
+      location: ev.location,
+      host: ev.host,
+    });
     setShowInlineForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -80,22 +121,30 @@ export default function EventsView() {
 
   function handleSave() {
     if (!form.title.trim() || !form.body.trim() || !form.date || !form.time) return;
+    const isoDate = `${form.date}T${form.time}:00Z`;
     if (editingId !== null) {
-      setEvents((prev) =>
-        prev.map((e) => (e.id === editingId ? { ...e, ...form } : e))
-      );
+      updateMutation.mutate({
+        id: editingId,
+        title: form.title,
+        description: form.body,
+        date: isoDate,
+        host: form.host,
+        location: form.location,
+        image: form.image,
+      });
     } else {
-      const newId = Math.max(0, ...events.map((e) => e.id)) + 1;
-      setEvents((prev) => [{ id: newId, ...form }, ...prev]);
+      createMutation.mutate({
+        title: form.title,
+        description: form.body,
+        date: isoDate,
+        host: form.host,
+        location: form.location,
+        image: form.image,
+      });
     }
-    closeForm();
   }
 
-  function handleDelete(id: number) {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
-    setDeleteConfirmId(null);
-  }
-
+  const isSaving = createMutation.isPending || updateMutation.isPending;
   const isFormValid =
     form.title.trim().length > 0 &&
     form.body.trim().length > 0 &&
@@ -117,7 +166,9 @@ export default function EventsView() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-extrabold text-mosque-text">Events</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{events.length} total</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {isLoading ? "Loading…" : `${events.length} total`}
+            </p>
           </div>
           <button
             onClick={openCreate}
@@ -209,10 +260,10 @@ export default function EventsView() {
             </button>
             <button
               onClick={handleSave}
-              disabled={!isFormValid}
+              disabled={!isFormValid || isSaving}
               className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-blue hover:bg-mosque-blue-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {editingId !== null ? "Save" : "Create"}
+              {isSaving ? "Saving…" : editingId !== null ? "Save" : "Create"}
             </button>
           </div>
         </InlineFormCard>
@@ -249,7 +300,11 @@ export default function EventsView() {
 
         {/* Event list */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {sorted.length === 0 ? (
+          {isLoading ? (
+            <div className="px-5 py-8 text-center text-sm text-gray-400">
+              Loading events…
+            </div>
+          ) : sorted.length === 0 ? (
             <EmptyState
               title="No events"
               description={
@@ -262,9 +317,10 @@ export default function EventsView() {
             sorted.map((ev, idx) => {
               const upcoming = isUpcoming(ev.date);
               const isLast = idx === sorted.length - 1;
-              const d = new Date(ev.date + "T00:00:00");
-              const monthStr = d.toLocaleDateString("en-US", { month: "short" });
-              const dayStr = d.getDate();
+              const d = new Date(ev.date);
+              const { dateStr, timeStr } = splitDateTime(ev.date);
+              const monthStr = d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+              const dayStr = new Date(ev.date).getUTCDate();
               return (
                 <div
                   key={ev.id}
@@ -292,7 +348,9 @@ export default function EventsView() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-mosque-text leading-snug">{ev.title}</span>
+                        <span className="font-semibold text-sm text-mosque-text leading-snug">
+                          {ev.title}
+                        </span>
                         {!upcoming && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-past text-neutral-inactive">
                             Past
@@ -300,10 +358,16 @@ export default function EventsView() {
                         )}
                       </div>
 
-                      <p className="text-sm text-gray-500 leading-relaxed mt-1.5">{ev.body}</p>
+                      <p className="text-sm text-gray-500 leading-relaxed mt-1.5">
+                        {ev.description}
+                      </p>
 
                       <div className="mt-3 rounded-xl overflow-hidden h-32 w-48">
-                        <img src={ev.image} alt="Event" className="w-full h-full object-cover" />
+                        <img
+                          src={ev.image}
+                          alt="Event"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
 
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2.5">
@@ -311,7 +375,7 @@ export default function EventsView() {
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          {formatDate(ev.date)} · {formatTime(ev.time)}
+                          {formatDate(dateStr)} · {formatTime(timeStr)}
                         </span>
                         {ev.location && (
                           <span className="flex items-center gap-1 text-xs text-gray-400">
@@ -357,13 +421,12 @@ export default function EventsView() {
             })
           )}
         </div>
-
       </div>
 
       {deleteConfirmId !== null && (
         <DeleteConfirmModal
           entityName="event"
-          onConfirm={() => handleDelete(deleteConfirmId)}
+          onConfirm={() => deleteMutation.mutate({ id: deleteConfirmId })}
           onCancel={() => setDeleteConfirmId(null)}
         />
       )}

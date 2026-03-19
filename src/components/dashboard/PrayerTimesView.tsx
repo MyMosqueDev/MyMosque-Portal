@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ToggleSwitch from "./ui/ToggleSwitch";
+import { trpc } from "@/trpc/react";
 
 type IqamaMode = "static" | "increment";
 interface PrayerConfig { mode: IqamaMode; staticTime: string; incrementMinutes: number; }
 type PrayerMap = Record<string, PrayerConfig>;
 interface JummahEntry { athanTime: string; iqamaTime: string; }
+
+interface PrayerDayEntry {
+  day: string;
+  times: {
+    fajr: { adhan: string; iqama: string };
+    sunrise: string;
+    dhuhr: { adhan: string; iqama: string };
+    asr: { adhan: string; iqama: string };
+    maghrib: { adhan: string; iqama: string };
+    isha: { adhan: string; iqama: string };
+    sunset: string;
+  };
+}
 
 const PRAYERS = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 const CALC_METHODS = [
@@ -15,46 +29,53 @@ const CALC_METHODS = [
   "Makkah (Umm Al-Qura)", "Karachi", "Tehran", "Jafari",
 ];
 
-function fmt(min: number) {
-  const h = Math.floor(min / 60) % 24, m = min % 60;
-  const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
-  return `${dh}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function asPrayerDays(record: any): PrayerDayEntry[] | null | undefined {
+  return record?.prayerTimes as PrayerDayEntry[] | null | undefined;
 }
 
-const monthData = Array.from({ length: 31 }, (_, i) => {
-  const dst = i + 1 >= 8 ? 60 : 0;
-  return {
-    day: i + 1,
-    fajr:    fmt(5*60 + 28 + dst + Math.round(i * 0.5)),
-    sunrise: fmt(7*60 +  4 + dst + Math.round(i * 0.7)),
-    dhuhr:   fmt(13*60+ 15 + dst + Math.round(i * 0.2)),
-    asr:     fmt(16*60+ 38 + dst + Math.round(i * 1.0)),
-    maghrib: fmt(19*60+ 27 + dst + Math.round(i * 1.1)),
-    isha:    fmt(20*60+ 48 + dst + Math.round(i * 0.9)),
-  };
-});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function asJummahTimes(mosqueData: any): { athan: string; iqama: string }[] | null {
+  return mosqueData?.jummahTimes ?? null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function asCoordinates(mosqueData: any): { lat: number; lng: number } | null {
+  return mosqueData?.coordinates ?? null;
+}
+
+function getCurrentMonthYear() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(2);
+  return `${mm}-${yy}`;
+}
+
+function getMonthLabel() {
+  return new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
 
 function formatTime12(t: string) {
+  if (!t) return "";
   const [h, m] = t.split(":").map(Number);
   const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
   return `${dh}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
+const DEFAULT_PRAYERS: PrayerMap = {
+  Fajr:    { mode: "static",     staticTime: "06:30", incrementMinutes: 0  },
+  Dhuhr:   { mode: "increment",  staticTime: "13:30", incrementMinutes: 10 },
+  Asr:     { mode: "static",     staticTime: "16:30", incrementMinutes: 0  },
+  Maghrib: { mode: "increment",  staticTime: "19:35", incrementMinutes: 15 },
+  Isha:    { mode: "increment",  staticTime: "21:00", incrementMinutes: 0  },
+};
+
 export default function PrayerTimesView() {
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [prayers, setPrayers] = useState<PrayerMap>({
-    Fajr:    { mode: "static",     staticTime: "06:30", incrementMinutes: 0  },
-    Dhuhr:   { mode: "increment",  staticTime: "13:30", incrementMinutes: 10 },
-    Asr:     { mode: "static",     staticTime: "16:30", incrementMinutes: 0  },
-    Maghrib: { mode: "increment",  staticTime: "19:35", incrementMinutes: 15 },
-    Isha:    { mode: "increment",  staticTime: "21:00", incrementMinutes: 0  },
-  });
-  const [jummah, setJummah] = useState<JummahEntry[]>([
-    { athanTime: "13:00", iqamaTime: "13:30" },
-    { athanTime: "14:00", iqamaTime: "14:30" },
-    { athanTime: "13:30", iqamaTime: "13:45" },
-  ]);
+  const [prayers, setPrayers] = useState<PrayerMap>(DEFAULT_PRAYERS);
+  const [jummah, setJummah] = useState<JummahEntry[]>([]);
   const [lat, setLat]             = useState("30.2672");
   const [lng, setLng]             = useState("-97.7431");
   const [city, setCity]           = useState("Austin");
@@ -63,6 +84,35 @@ export default function PrayerTimesView() {
   const [hanafiAsr, setHanafiAsr] = useState(false);
   const [calcMethod, setCalcMethod] = useState(0);
 
+  const monthYear = getCurrentMonthYear();
+  const utils = trpc.useUtils();
+
+  const mosque = trpc.mosque.getMe.useQuery();
+  const prayerTimesRecord = trpc.mosque.getPrayerTimes.useQuery({ monthYear });
+
+  const updateJummahMutation = trpc.mosque.updateJummah.useMutation({
+    onSuccess: () => utils.mosque.getMe.invalidate(),
+  });
+
+  const savePrayerTimesMutation = trpc.mosque.savePrayerTimes.useMutation({
+    onSuccess: () => utils.mosque.getPrayerTimes.invalidate({ monthYear }),
+  });
+
+  // Initialize jummah from mosque data
+  useEffect(() => {
+    const times = asJummahTimes(mosque.data);
+    if (times) {
+      setJummah(times.map((t) => ({ athanTime: t.athan ?? "", iqamaTime: t.iqama ?? "" })));
+    }
+    const coords = asCoordinates(mosque.data);
+    if (coords) {
+      setLat(String(coords.lat ?? "30.2672"));
+      setLng(String(coords.lng ?? "-97.7431"));
+    }
+  }, [mosque.data]);
+
+  const prayerDays = asPrayerDays(prayerTimesRecord.data);
+
   const updP = (p: string, patch: Partial<PrayerConfig>) =>
     setPrayers(prev => ({ ...prev, [p]: { ...prev[p], ...patch } }));
 
@@ -70,12 +120,27 @@ export default function PrayerTimesView() {
     const p = prayers[prayer];
     return p.mode === "static"
       ? `Final: ${formatTime12(p.staticTime)}`
-      : `Final: Iqama + ${p.incrementMinutes}`;
+      : `Iqama + ${p.incrementMinutes}m`;
   };
 
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  async function handleSave() {
+    setSaving(true);
+    try {
+      // Save jummah times
+      await updateJummahMutation.mutateAsync(
+        jummah.map((j) => ({ athanTime: j.athanTime, iqamaTime: j.iqamaTime }))
+      );
+      // If we have prayer times data, re-save it (persists any edits made externally)
+      if (prayerDays) {
+        await savePrayerTimesMutation.mutateAsync({ monthYear, prayerTimes: prayerDays });
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  }
 
-  // All inputs use mosque-purple as the focus accent
   const inputCls = "w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-purple/40 focus:border-mosque-purple transition-colors";
   const labelCls = "text-xs font-semibold text-neutral-inactive uppercase tracking-wide";
 
@@ -91,14 +156,18 @@ export default function PrayerTimesView() {
           </div>
           <button
             onClick={handleSave}
+            disabled={saving}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all ${
-              saved ? "bg-emerald-500 text-white" : "bg-mosque-purple text-white hover:bg-mosque-purple-dark"
+              saved
+                ? "bg-emerald-500 text-white"
+                : "bg-mosque-purple text-white hover:bg-mosque-purple-dark disabled:opacity-60"
             }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={saved ? "M5 13l4 4L19 7" : "M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"} />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                d={saved ? "M5 13l4 4L19 7" : "M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"} />
             </svg>
-            {saved ? "Saved" : "Save Changes"}
+            {saving ? "Saving…" : saved ? "Saved" : "Save Changes"}
           </button>
         </div>
 
@@ -120,14 +189,12 @@ export default function PrayerTimesView() {
                   const isIncrement = p.mode === "increment";
                   return (
                     <div key={prayer} className="border border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-colors">
-                      {/* Header */}
                       <div className="flex items-center justify-between mb-3">
                         <span className="font-semibold text-sm text-mosque-text">{prayer}</span>
                         <span className="text-[10px] font-semibold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full tabular-nums">
                           {finalLabel(prayer)}
                         </span>
                       </div>
-                      {/* Toggle */}
                       <div className="flex items-center gap-2 mb-3.5">
                         <ToggleSwitch
                           checked={isIncrement}
@@ -138,7 +205,6 @@ export default function PrayerTimesView() {
                           {isIncrement ? "Increment" : "Static Time"}
                         </span>
                       </div>
-                      {/* Input */}
                       {!isIncrement ? (
                         <div>
                           <label className={`${labelCls} block mb-1.5`}>Prayer Time</label>
@@ -152,7 +218,7 @@ export default function PrayerTimesView() {
                         </div>
                       ) : (
                         <div>
-                          <label className={`${labelCls} block mb-1.5`}>Minutes after Iqama</label>
+                          <label className={`${labelCls} block mb-1.5`}>Minutes after Adhan</label>
                           <div className="flex items-center border border-neutral-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-mosque-purple/40 focus-within:border-mosque-purple transition-colors">
                             <input
                               type="number"
@@ -163,14 +229,8 @@ export default function PrayerTimesView() {
                               className="flex-1 px-4 py-2.5 text-sm text-mosque-text focus:outline-none bg-transparent"
                             />
                             <div className="flex flex-col border-l border-neutral-border">
-                              <button
-                                onClick={() => updP(prayer, { incrementMinutes: Math.min(120, p.incrementMinutes + 1) })}
-                                className="px-2 py-1 text-[10px] text-gray-400 hover:text-mosque-text hover:bg-gray-50 leading-none transition-colors"
-                              >▲</button>
-                              <button
-                                onClick={() => updP(prayer, { incrementMinutes: Math.max(0, p.incrementMinutes - 1) })}
-                                className="px-2 py-1 text-[10px] text-gray-400 hover:text-mosque-text hover:bg-gray-50 leading-none transition-colors border-t border-neutral-border"
-                              >▼</button>
+                              <button onClick={() => updP(prayer, { incrementMinutes: Math.min(120, p.incrementMinutes + 1) })} className="px-2 py-1 text-[10px] text-gray-400 hover:text-mosque-text hover:bg-gray-50 leading-none transition-colors">▲</button>
+                              <button onClick={() => updP(prayer, { incrementMinutes: Math.max(0, p.incrementMinutes - 1) })} className="px-2 py-1 text-[10px] text-gray-400 hover:text-mosque-text hover:bg-gray-50 leading-none transition-colors border-t border-neutral-border">▼</button>
                             </div>
                           </div>
                         </div>
@@ -186,7 +246,9 @@ export default function PrayerTimesView() {
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-mosque-text">Jumu&apos;ah Prayer Times</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Friday prayer times — applies to all schedules</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {mosque.isLoading ? "Loading…" : "Friday prayer times — applies to all schedules"}
+                  </p>
                 </div>
                 {jummah.length < 5 && (
                   <button
@@ -284,7 +346,6 @@ export default function PrayerTimesView() {
                 </div>
               </div>
             </div>
-
           </div>
 
           {/* ════ RIGHT SIDEBAR ════ */}
@@ -294,35 +355,53 @@ export default function PrayerTimesView() {
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <p className="text-sm font-bold text-mosque-text">Monthly Prayer Times</p>
-                <span className="text-xs font-semibold text-mosque-purple">March 2026</span>
+                <span className="text-xs font-semibold text-mosque-purple">{getMonthLabel()}</span>
               </div>
               <div className="overflow-x-auto" style={{ maxHeight: 320, overflowY: "auto" }}>
-                <table className="w-full text-xs min-w-[280px]">
-                  <thead className="sticky top-0 bg-white">
-                    <tr className="border-b border-gray-100">
-                      <th className="px-4 py-2.5 text-left font-semibold text-gray-400 w-9">Day</th>
-                      <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Fajr</th>
-                      <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Dhuhr</th>
-                      <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Asr</th>
-                      <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Maghrib</th>
-                      <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Isha</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthData.map(row => (
-                      <tr key={row.day} className="border-t border-gray-50 hover:bg-gray-50/60 transition-colors">
-                        <td className="px-4 py-2 font-bold text-gray-500 tabular-nums">
-                          {String(row.day).padStart(2, "0")}
-                        </td>
-                        <td className="px-2 py-2 text-right text-gray-600 tabular-nums">{row.fajr}</td>
-                        <td className="px-2 py-2 text-right text-gray-600 tabular-nums">{row.dhuhr}</td>
-                        <td className="px-2 py-2 text-right text-gray-600 tabular-nums">{row.asr}</td>
-                        <td className="px-2 py-2 text-right text-gray-600 tabular-nums">{row.maghrib}</td>
-                        <td className="px-2 py-2 text-right text-gray-600 tabular-nums">{row.isha}</td>
+                {prayerTimesRecord.isLoading ? (
+                  <div className="px-5 py-8 text-center text-sm text-gray-400">Loading…</div>
+                ) : !prayerDays ? (
+                  <div className="px-5 py-8 text-center text-sm text-gray-400">
+                    No prayer times for this month.
+                  </div>
+                ) : (
+                  <table className="w-full text-xs min-w-[280px]">
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="border-b border-gray-100">
+                        <th className="px-4 py-2.5 text-left font-semibold text-gray-400 w-9">Day</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Fajr</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Dhuhr</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Asr</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Maghrib</th>
+                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Isha</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {prayerDays.map(row => (
+                        <tr key={row.day} className="border-t border-gray-50 hover:bg-gray-50/60 transition-colors">
+                          <td className="px-4 py-2 font-bold text-gray-500 tabular-nums">
+                            {row.day}
+                          </td>
+                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
+                            {row.times.fajr.adhan}
+                          </td>
+                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
+                            {row.times.dhuhr.adhan}
+                          </td>
+                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
+                            {row.times.asr.adhan}
+                          </td>
+                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
+                            {row.times.maghrib.adhan}
+                          </td>
+                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
+                            {row.times.isha.adhan}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
 
@@ -332,7 +411,6 @@ export default function PrayerTimesView() {
                 <p className="text-sm font-bold text-mosque-text">Settings</p>
               </div>
               <div className="px-5 py-4 space-y-4">
-                {/* Hanafi Asr toggle */}
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-mosque-text">Hanafi Asr Times</p>
@@ -348,7 +426,6 @@ export default function PrayerTimesView() {
                     />
                   </div>
                 </div>
-                {/* Calculation Method */}
                 <div className="border-t border-gray-100 pt-4">
                   <label className={`${labelCls} block mb-2`}>Calculation Method</label>
                   <select
@@ -366,7 +443,6 @@ export default function PrayerTimesView() {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>
