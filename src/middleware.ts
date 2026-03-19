@@ -5,7 +5,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── Dev mode: simple cookie-based auth ──────────────────────────────────
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.VERCEL_ENV !== "production") {
     if (pathname.startsWith("/dashboard")) {
       const session = request.cookies.get("mosque-session");
       if (!session) {
