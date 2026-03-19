@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build",
+    "build": "./node_modules/.bin/prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
   },
