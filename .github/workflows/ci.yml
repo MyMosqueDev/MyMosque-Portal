@@ -39,7 +39,7 @@ jobs:
       - name: Provision Branch Database & Run Migrations
         run: |
           # Load DATABASE_URL and DIRECT_URL from Vercel (base URLs, no /dbname yet)
-          export $(grep -v '^#' .vercel/.env.preview.local | xargs)
+          set -a; source .vercel/.env.preview.local; set +a
 
           # Provision the branch database using the admin postgres DB
           echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql $DATABASE_URL/postgres
@@ -55,6 +55,6 @@ jobs:
 
       - name: Deploy to Vercel Preview
         run: |
-          export $(grep -v '^#' .vercel/.env.preview.local | xargs)
+          set -a; source .vercel/.env.preview.local; set +a
           export DATABASE_URL=$DATABASE_URL/$DB_NAME
           npx vercel@latest deploy --token=$VERCEL_TOKEN --env DATABASE_URL=$DATABASE_URL
