@@ -38,41 +38,17 @@ jobs:
 
       - name: Provision Branch Database & Run Migrations
         run: |
-          # Load DATABASE_URL and DIRECT_URL from Vercel
-          set -a; source .vercel/.env.preview.local; set +a
+          # Load DATABASE_URL and DIRECT_URL from Vercel (base URLs, no /dbname yet)
+          export $(grep -v '^#' .vercel/.env.preview.local | xargs)
 
-          # Build branch-specific URLs by replacing the db name (not appending)
-          # DIRECT_URL ends with /postgres, DATABASE_URL ends with /postgres?pgbouncer=true
-          # We need to replace "postgres" with $DB_NAME in the path only
-          BRANCH_DIRECT_URL=$(python3 -c "
-          from urllib.parse import urlparse, urlunparse
-          import os
-          u = urlparse(os.environ['DIRECT_URL'])
-          print(urlunparse((u.scheme, u.netloc, '/' + os.environ['DB_NAME'], '', '', '')))
-          ")
+          # Provision the branch database using the admin postgres DB
+          echo "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();" | psql $DIRECT_URL/postgres
+          echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql $DIRECT_URL/postgres
+          echo "CREATE DATABASE \"$DB_NAME\"" | psql $DIRECT_URL/postgres
 
-          BRANCH_POOLER_URL=$(python3 -c "
-          from urllib.parse import urlparse, urlunparse
-          import os
-          u = urlparse(os.environ['DATABASE_URL'])
-          print(urlunparse((u.scheme, u.netloc, '/' + os.environ['DB_NAME'], '', u.query, '')))
-          ")
-
-          ADMIN_URL=$(python3 -c "
-          from urllib.parse import urlparse, urlunparse
-          import os
-          u = urlparse(os.environ['DIRECT_URL'])
-          print(urlunparse((u.scheme, u.netloc, '/postgres', '', '', '')))
-          ")
-
-          # Provision the branch database via direct connection (not pgbouncer)
-          echo "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();" | psql "$ADMIN_URL"
-          echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql "$ADMIN_URL"
-          echo "CREATE DATABASE \"$DB_NAME\""         | psql "$ADMIN_URL"
-
-          # Point Prisma at the branch database (DIRECT_URL = direct conn, no pgbouncer)
-          export DIRECT_URL=$BRANCH_DIRECT_URL
-          export DATABASE_URL=$BRANCH_POOLER_URL
+          # Point Prisma at the new branch database
+          export DATABASE_URL=$DATABASE_URL/$DB_NAME
+          export DIRECT_URL=$DIRECT_URL/$DB_NAME
 
           npx prisma generate
           npx prisma migrate deploy
@@ -80,15 +56,6 @@ jobs:
 
       - name: Deploy to Vercel Preview
         run: |
-          set -a; source .vercel/.env.preview.local; set +a
-
-          BRANCH_POOLER_URL=$(python3 -c "
-          from urllib.parse import urlparse, urlunparse
-          import os
-          u = urlparse(os.environ['DATABASE_URL'])
-          print(urlunparse((u.scheme, u.netloc, '/' + os.environ['DB_NAME'], '', u.query, '')))
-          ")
-
-          npx vercel@latest deploy --token=$VERCEL_TOKEN \
-            --build-env DATABASE_URL="$BRANCH_POOLER_URL" \
-            --env DATABASE_URL="$BRANCH_POOLER_URL"
+          export $(grep -v '^#' .vercel/.env.preview.local | xargs)
+          export DATABASE_URL=$DATABASE_URL/$DB_NAME
+          npx vercel@latest deploy --token=$VERCEL_TOKEN --build-env DATABASE_URL=$DATABASE_URL --env DATABASE_URL=$DATABASE_URL
