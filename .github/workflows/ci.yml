@@ -15,7 +15,7 @@ jobs:
     env:
       # Base Supabase connection strings (store these in GitHub Secrets)
       # e.g., postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT.supabase.co:5432
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BASE_DATABASE_URL: ${{ secrets.BASE_DATABASE_URL }}
       
       # Vercel CLI authentication (store in GitHub Secrets)
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -45,31 +45,30 @@ jobs:
       - name: Provision Branch Database
         # Uses the default postgres database to run the DROP/CREATE commands
         run: |
-          eval $(python3 -c "
-          from urllib.parse import urlparse
-          import os
-          u = urlparse(os.environ['DATABASE_URL'])
-          print(f'export PGHOST={u.hostname}')
-          print(f'export PGUSER={u.username}')
-          print(f'export PGPASSWORD={u.password}')
-          print(f'export PGPORT={u.port or 5432}')
-          ")
+          export PGPASSWORD=$(echo $BASE_DATABASE_URL | sed -n 's/.*:\([^@]*\)@.*/\1/p')
+          export PGHOST=$(echo $BASE_DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+          export PGUSER=$(echo $BASE_DATABASE_URL | sed -n 's/.*postgres:\/\/\([^:]*\):.*/\1/p')
+          export PGPORT=5432
 
           echo "Dropping existing database if it exists..."
-          psql -h "$PGHOST" -U "$PGUSER" -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
-
+          psql -h $PGHOST -U $PGUSER -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
+          
           echo "Creating new database for branch..."
-          psql -h "$PGHOST" -U "$PGUSER" -d postgres -c "CREATE DATABASE \"$DB_NAME\";"
+          psql -h $PGHOST -U $PGUSER -d postgres -c "CREATE DATABASE \"$DB_NAME\";"
 
       - name: Run Prisma Migrations & Seed
         run: |
+          # Append the new database name to the base URL
+          export DATABASE_URL="${BASE_DATABASE_URL}/${DB_NAME}"
+          export DIRECT_URL="${BASE_DATABASE_URL}/${DB_NAME}"
+          
           npx prisma generate
           npx prisma migrate deploy
           npx prisma db seed
         env:
           # Expose it specifically for this step
-          DATABASE_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
-          DIRECT_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
+          DATABASE_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
+          DIRECT_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
 
       - name: Deploy to Vercel Preview
         run: |
@@ -83,5 +82,5 @@ jobs:
           vercel deploy --prebuilt --token=$VERCEL_TOKEN
         env:
           # This ensures the Vercel build uses the newly created database
-          DATABASE_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
-          DIRECT_URL: ${{ env.DATABASE_URL }}/${{ env.DB_NAME }}
+          DATABASE_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
+          DIRECT_URL: ${{ env.BASE_DATABASE_URL }}/${{ env.DB_NAME }}
