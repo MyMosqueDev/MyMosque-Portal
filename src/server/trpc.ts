@@ -1,4 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import { createServerClient } from "@supabase/ssr";
+import { db } from "@/lib/db";
 
 export type Context = {
   mosqueId: string | null;
@@ -16,7 +18,35 @@ function parseCookies(header: string): Record<string, string> {
   );
 }
 
-export function createContext(req: Request): Context {
+export async function createContext(req: Request): Promise<Context> {
+  // ── Production: Supabase session ────────────────────────────────────────
+  if (process.env.VERCEL_ENV === "production") {
+    const cookieHeader = req.headers.get("cookie") ?? "";
+    const rawCookies = parseCookies(cookieHeader);
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return Object.entries(rawCookies).map(([name, value]) => ({ name, value }));
+          },
+          setAll() {
+            // read-only in tRPC context — session cookies are managed by middleware
+          },
+        },
+      }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { mosqueId: null };
+
+    const mosque = await db.mosque.findFirst({ where: { uid: user.id } });
+    return { mosqueId: mosque?.id ?? null };
+  }
+
+  // ── Dev mode: cookie-based session ──────────────────────────────────────
   const cookieHeader = req.headers.get("cookie") ?? "";
   const cookies = parseCookies(cookieHeader);
   const raw = cookies["mosque-session"];

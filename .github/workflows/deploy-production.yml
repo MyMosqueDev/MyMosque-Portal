@@ -1,0 +1,45 @@
+name: Production Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-production:
+    name: Deploy to Vercel Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull Vercel Environment Variables
+        run: npx vercel@latest pull --yes --environment=production --token=$VERCEL_TOKEN
+
+      - name: Run Migrations
+        run: |
+          set -a; source .vercel/.env.production.local; set +a
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Deploy to Vercel Production
+        id: deploy
+        run: |
+          npx vercel@latest deploy --prod --token=$VERCEL_TOKEN | tee deploy-url.txt
+          echo "url=$(tail -1 deploy-url.txt)" >> $GITHUB_OUTPUT
