@@ -37,7 +37,7 @@ export default function DashboardPage() {
     if (hasShownUpdate.current) return;
     console.log("Background sync: checking for updates");
 
-    utils.mosque.getMe.fetch().then((fresh) => {
+    (utils.mosque.getMe.fetch() as Promise<any>).then((fresh: any) => {
       const cached = getCache();
       if (!cached?.mosque || !fresh) return;
 
@@ -61,7 +61,6 @@ export default function DashboardPage() {
         });
       }
     }).catch(() => {
-      // Background check failed — ignore silently
     });
   }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -139,7 +138,7 @@ export default function DashboardPage() {
               <span className="text-xs text-gray-300 font-medium leading-tight block truncate">
                 {mosque.data?.name ?? "Loading…"}
               </span>
-              <span className="text-[10px] text-gray-500 leading-tight block truncate opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[10px] text-gray-500 leading-tight block truncate ">
                 {mosque.data?.email ?? ""}
               </span>
             </div>
