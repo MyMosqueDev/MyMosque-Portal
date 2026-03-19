@@ -45,23 +45,24 @@ jobs:
       - name: Provision Branch Database
         # Uses the default postgres database to run the DROP/CREATE commands
         run: |
-          export PGPASSWORD=$(echo $DATABASE_URL | sed -n 's/.*:\([^@]*\)@.*/\1/p')
-          export PGHOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
-          export PGUSER=$(echo $DATABASE_URL | sed -n 's/.*postgres:\/\/\([^:]*\):.*/\1/p')
-          export PGPORT=5432
+          eval $(python3 -c "
+          from urllib.parse import urlparse
+          import os
+          u = urlparse(os.environ['DATABASE_URL'])
+          print(f'export PGHOST={u.hostname}')
+          print(f'export PGUSER={u.username}')
+          print(f'export PGPASSWORD={u.password}')
+          print(f'export PGPORT={u.port or 5432}')
+          ")
 
           echo "Dropping existing database if it exists..."
-          psql -h $PGHOST -U $PGUSER -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
-          
+          psql -h "$PGHOST" -U "$PGUSER" -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
+
           echo "Creating new database for branch..."
-          psql -h $PGHOST -U $PGUSER -d postgres -c "CREATE DATABASE \"$DB_NAME\";"
+          psql -h "$PGHOST" -U "$PGUSER" -d postgres -c "CREATE DATABASE \"$DB_NAME\";"
 
       - name: Run Prisma Migrations & Seed
         run: |
-          # Append the new database name to the base URL
-          export DATABASE_URL="${DATABASE_URL}/${DB_NAME}"
-          export DIRECT_URL="${DATABASE_URL}/${DB_NAME}"
-          
           npx prisma generate
           npx prisma migrate deploy
           npx prisma db seed
