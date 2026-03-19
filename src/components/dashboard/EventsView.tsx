@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import ImageUploader from "./ui/ImageUploader";
 import DeleteConfirmModal from "./ui/DeleteConfirmModal";
 import InlineFormCard from "./ui/InlineFormCard";
-import ItemActions from "./ui/ItemActions";
 import EmptyState from "./ui/EmptyState";
 import { trpc } from "@/trpc/react";
 import { getCache, setCache } from "@/lib/mosque-cache";
@@ -117,9 +116,14 @@ export default function EventsView() {
       ? events.filter((e) => isUpcoming(e.date))
       : events.filter((e) => !isUpcoming(e.date));
 
-  const sorted = [...filtered].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  const sorted = [...filtered].sort((a, b) => {
+    const aUp = isUpcoming(a.date);
+    const bUp = isUpcoming(b.date);
+    if (aUp && !bUp) return -1;
+    if (!aUp && bUp) return 1;
+    if (aUp) return new Date(a.date).getTime() - new Date(b.date).getTime();
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
 
   function openCreate() {
     setEditingId(null);
@@ -136,6 +140,23 @@ export default function EventsView() {
       image: ev.image,
       imageFile: null,
       date: dateStr,
+      time: timeStr,
+      location: ev.location,
+      host: ev.host,
+    });
+    setShowInlineForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openDuplicate(ev: (typeof events)[number]) {
+    setEditingId(null);
+    const { timeStr } = splitDateTime(ev.date);
+    setForm({
+      title: ev.title,
+      body: ev.description,
+      image: ev.image,
+      imageFile: null,
+      date: "",
       time: timeStr,
       location: ev.location,
       host: ev.host,
@@ -295,6 +316,7 @@ export default function EventsView() {
               <input
                 type="date"
                 value={form.date}
+                min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
                 className={`border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors ${attemptedSubmit && !form.date ? "border-red-400" : "border-neutral-border"}`}
               />
@@ -478,12 +500,38 @@ export default function EventsView() {
                         )}
                       </div>
 
-                      <div className="mt-3 flex items-center gap-2 flex-wrap">
-                        <ItemActions
-                          section="events"
-                          onEdit={() => openEdit(ev)}
-                          onDelete={() => setDeleteConfirmId(ev.id)}
-                        />
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openDuplicate(ev)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Duplicate
+                          </button>
+                          {upcoming && (
+                            <button
+                              onClick={() => openEdit(ev)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-mosque-blue bg-mosque-blue/8 hover:bg-mosque-blue/15 transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setDeleteConfirmId(ev.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
+                        </div>
                         <a
                           href={`/events/${ev.id}`}
                           target="_blank"
