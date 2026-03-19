@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   // Auth check
@@ -12,7 +13,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch (err) {
+    logger.error("upload", "Failed to parse form data", err);
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+  }
+
   const file = formData.get("file") as File | null;
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -37,8 +45,13 @@ export async function POST(req: NextRequest) {
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const filePath = path.join(uploadsDir, filename);
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buffer);
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(filePath, buffer);
+  } catch (err) {
+    logger.error("upload", "Failed to write file", { filename, err });
+    return NextResponse.json({ error: "Failed to save file" }, { status: 500 });
+  }
 
   return NextResponse.json({ url: `/uploads/${filename}` });
 }

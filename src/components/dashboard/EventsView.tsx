@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import ImageUploader from "./ui/ImageUploader";
 import DeleteConfirmModal from "./ui/DeleteConfirmModal";
 import InlineFormCard from "./ui/InlineFormCard";
@@ -54,29 +55,42 @@ export default function EventsView() {
   const [editingId, setEditingId]             = useState<number | null>(null);
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const utils = trpc.useUtils();
 
-  const { data: events = [], isLoading } = trpc.mosque.listEvents.useQuery();
+  const { data: events = [], isLoading, isError: isListError } = trpc.mosque.listEvents.useQuery();
 
   const createMutation = trpc.mosque.createEvent.useMutation({
     onSuccess: () => {
       utils.mosque.listEvents.invalidate();
+      toast.success("Event created");
       closeForm();
+    },
+    onError(err) {
+      toast.error(err.message ?? "Failed to create event");
     },
   });
 
   const updateMutation = trpc.mosque.updateEvent.useMutation({
     onSuccess: () => {
       utils.mosque.listEvents.invalidate();
+      toast.info("Event updated");
       closeForm();
+    },
+    onError(err) {
+      toast.error(err.message ?? "Failed to update event");
     },
   });
 
   const deleteMutation = trpc.mosque.deleteEvent.useMutation({
     onSuccess: () => {
       utils.mosque.listEvents.invalidate();
+      toast.warning("Event deleted");
       setDeleteConfirmId(null);
+    },
+    onError(err) {
+      toast.error(err.message ?? "Failed to delete event");
     },
   });
 
@@ -117,10 +131,21 @@ export default function EventsView() {
     setShowInlineForm(false);
     setEditingId(null);
     setForm(emptyForm);
+    setAttemptedSubmit(false);
+  }
+
+  function fieldError(field: keyof typeof emptyForm, label: string) {
+    if (!attemptedSubmit) return null;
+    const val = form[field];
+    if (typeof val === "string" && val.trim().length === 0) {
+      return <p className="text-xs text-red-500 mt-1">{label} is required</p>;
+    }
+    return null;
   }
 
   function handleSave() {
-    if (!form.title.trim() || !form.body.trim() || !form.date || !form.time) return;
+    setAttemptedSubmit(true);
+    if (!form.title.trim() || !form.body.trim() || !form.date || !form.time || !form.image) return;
     const isoDate = `${form.date}T${form.time}:00Z`;
     if (editingId !== null) {
       updateMutation.mutate({
@@ -145,12 +170,6 @@ export default function EventsView() {
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
-  const isFormValid =
-    form.title.trim().length > 0 &&
-    form.body.trim().length > 0 &&
-    form.date.length > 0 &&
-    form.time.length > 0 &&
-    form.image.length > 0;
 
   const tabs: { key: FilterTab; label: string }[] = [
     { key: "all",      label: "All"      },
@@ -190,27 +209,38 @@ export default function EventsView() {
         >
           <div className="flex gap-3 items-stretch">
             <div className="flex-1 flex flex-col gap-3">
-              <input
-                type="text"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="Title *"
-                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
-              />
-              <textarea
-                value={form.body}
-                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-                placeholder="Description *"
-                rows={3}
-                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors resize-none leading-relaxed flex-1"
-              />
+              <div>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="Title *"
+                  className={`w-full border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors ${attemptedSubmit && !form.title.trim() ? "border-red-400" : "border-neutral-border"}`}
+                />
+                {fieldError("title", "Title")}
+              </div>
+              <div className="flex-1 flex flex-col">
+                <textarea
+                  value={form.body}
+                  onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+                  placeholder="Description *"
+                  rows={3}
+                  className={`w-full border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors resize-none leading-relaxed flex-1 ${attemptedSubmit && !form.body.trim() ? "border-red-400" : "border-neutral-border"}`}
+                />
+                {fieldError("body", "Description")}
+              </div>
             </div>
-            <ImageUploader
-              image={form.image}
-              onChange={(url) => setForm((f) => ({ ...f, image: url }))}
-              onClear={() => setForm((f) => ({ ...f, image: "" }))}
-              label="Image *"
-            />
+            <div className="flex flex-col">
+              <ImageUploader
+                image={form.image}
+                onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+                onClear={() => setForm((f) => ({ ...f, image: "" }))}
+                label="Image *"
+              />
+              {attemptedSubmit && !form.image && (
+                <p className="text-xs text-red-500 mt-1">Image is required</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -220,8 +250,9 @@ export default function EventsView() {
                 type="date"
                 value={form.date}
                 onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                className="border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
+                className={`border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors ${attemptedSubmit && !form.date ? "border-red-400" : "border-neutral-border"}`}
               />
+              {fieldError("date", "Date")}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-neutral-inactive uppercase tracking-wide">Time *</label>
@@ -229,8 +260,9 @@ export default function EventsView() {
                 type="time"
                 value={form.time}
                 onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-                className="border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors"
+                className={`border rounded-xl px-4 py-2.5 text-sm text-mosque-text focus:outline-none focus:ring-2 focus:ring-mosque-blue/40 focus:border-mosque-blue transition-colors ${attemptedSubmit && !form.time ? "border-red-400" : "border-neutral-border"}`}
               />
+              {fieldError("time", "Time")}
             </div>
           </div>
 
@@ -260,7 +292,7 @@ export default function EventsView() {
             </button>
             <button
               onClick={handleSave}
-              disabled={!isFormValid || isSaving}
+              disabled={isSaving}
               className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-blue hover:bg-mosque-blue-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isSaving ? "Saving…" : editingId !== null ? "Save" : "Create"}
@@ -303,6 +335,10 @@ export default function EventsView() {
           {isLoading ? (
             <div className="px-5 py-8 text-center text-sm text-gray-400">
               Loading events…
+            </div>
+          ) : isListError ? (
+            <div className="px-5 py-8 text-center text-sm text-red-400">
+              Failed to load events. Please refresh the page.
             </div>
           ) : sorted.length === 0 ? (
             <EmptyState
@@ -428,6 +464,7 @@ export default function EventsView() {
           entityName="event"
           onConfirm={() => deleteMutation.mutate({ id: deleteConfirmId })}
           onCancel={() => setDeleteConfirmId(null)}
+          isPending={deleteMutation.isPending}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   if (process.env.NODE_ENV !== "development") {
@@ -8,9 +9,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const { email } = await request.json();
+  let email: string;
+  try {
+    const body = await request.json();
+    email = body.email;
+  } catch (err) {
+    logger.error("dev-login", "Failed to parse request body", err);
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
   if (email !== "admin@yopmail.com") {
+    logger.warn("dev-login", "Invalid credentials attempt", { email });
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
@@ -25,5 +34,6 @@ export async function POST(request: Request) {
     path: "/",
   });
 
+  logger.info("dev-login", "Successful login", { email });
   return response;
 }

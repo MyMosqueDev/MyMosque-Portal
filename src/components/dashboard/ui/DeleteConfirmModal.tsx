@@ -2,12 +2,13 @@ interface DeleteConfirmModalProps {
   entityName: string;
   onConfirm: () => void;
   onCancel: () => void;
+  isPending?: boolean;
 }
 
-export default function DeleteConfirmModal({ entityName, onConfirm, onCancel }: DeleteConfirmModalProps) {
+export default function DeleteConfirmModal({ entityName, onConfirm, onCancel, isPending }: DeleteConfirmModalProps) {
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" onClick={isPending ? undefined : onCancel} />
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
           <div className="flex items-start gap-4">
@@ -24,15 +25,17 @@ export default function DeleteConfirmModal({ entityName, onConfirm, onCancel }: 
           <div className="flex items-center justify-end gap-3">
             <button
               onClick={onCancel}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
+              disabled={isPending}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               onClick={onConfirm}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
+              disabled={isPending}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Delete
+              {isPending ? "Deleting…" : "Delete"}
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import ToggleSwitch from "./ui/ToggleSwitch";
 import { trpc } from "@/trpc/react";
 
@@ -89,6 +90,8 @@ export default function PrayerTimesView() {
 
   const mosque = trpc.mosque.getMe.useQuery();
   const prayerTimesRecord = trpc.mosque.getPrayerTimes.useQuery({ monthYear });
+  const isGetMeError = mosque.isError;
+  const isPrayerTimesError = prayerTimesRecord.isError;
 
   const updateJummahMutation = trpc.mosque.updateJummah.useMutation({
     onSuccess: () => utils.mosque.getMe.invalidate(),
@@ -135,7 +138,12 @@ export default function PrayerTimesView() {
         await savePrayerTimesMutation.mutateAsync({ monthYear, prayerTimes: prayerDays });
       }
       setSaved(true);
+      toast.success("Prayer times saved");
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save prayer times";
+      toast.error(message);
+      console.error("[PrayerTimesView] handleSave error", err);
     } finally {
       setSaving(false);
     }
@@ -247,7 +255,7 @@ export default function PrayerTimesView() {
                 <div>
                   <p className="text-sm font-bold text-mosque-text">Jumu&apos;ah Prayer Times</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {mosque.isLoading ? "Loading…" : "Friday prayer times — applies to all schedules"}
+                    {mosque.isLoading ? "Loading…" : isGetMeError ? "Failed to load mosque data" : "Friday prayer times — applies to all schedules"}
                   </p>
                 </div>
                 {jummah.length < 5 && (
@@ -360,6 +368,10 @@ export default function PrayerTimesView() {
               <div className="overflow-x-auto" style={{ maxHeight: 320, overflowY: "auto" }}>
                 {prayerTimesRecord.isLoading ? (
                   <div className="px-5 py-8 text-center text-sm text-gray-400">Loading…</div>
+                ) : isPrayerTimesError ? (
+                  <div className="px-5 py-8 text-center text-sm text-red-400">
+                    Failed to load prayer times.
+                  </div>
                 ) : !prayerDays ? (
                   <div className="px-5 py-8 text-center text-sm text-gray-400">
                     No prayer times for this month.

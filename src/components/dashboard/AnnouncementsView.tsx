@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import ImageUploader from "./ui/ImageUploader";
 import DeleteConfirmModal from "./ui/DeleteConfirmModal";
 import InlineFormCard from "./ui/InlineFormCard";
@@ -32,30 +33,43 @@ export default function AnnouncementsView() {
   const [editingId, setEditingId]             = useState<number | null>(null);
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const utils = trpc.useUtils();
 
-  const { data: announcements = [], isLoading } =
+  const { data: announcements = [], isLoading, isError: isListError } =
     trpc.mosque.listAnnouncements.useQuery();
 
   const createMutation = trpc.mosque.createAnnouncement.useMutation({
     onSuccess: () => {
       utils.mosque.listAnnouncements.invalidate();
+      toast.success("Announcement posted");
       closeForm();
+    },
+    onError(err) {
+      toast.error(err.message ?? "Failed to create announcement");
     },
   });
 
   const updateMutation = trpc.mosque.updateAnnouncement.useMutation({
     onSuccess: () => {
       utils.mosque.listAnnouncements.invalidate();
+      toast.info("Announcement updated");
       closeForm();
+    },
+    onError(err) {
+      toast.error(err.message ?? "Failed to update announcement");
     },
   });
 
   const deleteMutation = trpc.mosque.deleteAnnouncement.useMutation({
     onSuccess: () => {
       utils.mosque.listAnnouncements.invalidate();
+      toast.warning("Announcement deleted");
       setDeleteConfirmId(null);
+    },
+    onError(err) {
+      toast.error(err.message ?? "Failed to delete announcement");
     },
   });
 
@@ -85,9 +99,11 @@ export default function AnnouncementsView() {
     setShowInlineForm(false);
     setEditingId(null);
     setForm(emptyForm);
+    setAttemptedSubmit(false);
   }
 
   function handleSave() {
+    setAttemptedSubmit(true);
     if (!form.title.trim() || !form.body.trim()) return;
     if (editingId !== null) {
       updateMutation.mutate({
@@ -108,7 +124,6 @@ export default function AnnouncementsView() {
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
-  const isFormValid = form.title.trim().length > 0 && form.body.trim().length > 0;
 
   const tabs: { key: FilterTab; label: string }[] = [
     { key: "all",    label: "All"    },
@@ -148,20 +163,30 @@ export default function AnnouncementsView() {
         >
           <div className="flex gap-3 items-stretch">
             <div className="flex-1 flex flex-col gap-3">
-              <input
-                type="text"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="Title *"
-                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-green/40 focus:border-mosque-green transition-colors"
-              />
-              <textarea
-                value={form.body}
-                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-                placeholder="Message *"
-                rows={3}
-                className="w-full border border-neutral-border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-green/40 focus:border-mosque-green transition-colors resize-none leading-relaxed flex-1"
-              />
+              <div>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="Title *"
+                  className={`w-full border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-green/40 focus:border-mosque-green transition-colors ${attemptedSubmit && !form.title.trim() ? "border-red-400" : "border-neutral-border"}`}
+                />
+                {attemptedSubmit && !form.title.trim() && (
+                  <p className="text-xs text-red-500 mt-1">Title is required</p>
+                )}
+              </div>
+              <div className="flex-1 flex flex-col">
+                <textarea
+                  value={form.body}
+                  onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+                  placeholder="Message *"
+                  rows={3}
+                  className={`w-full border rounded-xl px-4 py-2.5 text-sm text-mosque-text placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-mosque-green/40 focus:border-mosque-green transition-colors resize-none leading-relaxed flex-1 ${attemptedSubmit && !form.body.trim() ? "border-red-400" : "border-neutral-border"}`}
+                />
+                {attemptedSubmit && !form.body.trim() && (
+                  <p className="text-xs text-red-500 mt-1">Message is required</p>
+                )}
+              </div>
             </div>
             <ImageUploader
               image={form.image}
@@ -204,7 +229,7 @@ export default function AnnouncementsView() {
             </button>
             <button
               onClick={handleSave}
-              disabled={!isFormValid || isSaving}
+              disabled={isSaving}
               className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-mosque-green hover:bg-mosque-green-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isSaving ? "Saving…" : editingId !== null ? "Save" : "Post"}
@@ -246,6 +271,10 @@ export default function AnnouncementsView() {
           {isLoading ? (
             <div className="px-5 py-8 text-center text-sm text-gray-400">
               Loading announcements…
+            </div>
+          ) : isListError ? (
+            <div className="px-5 py-8 text-center text-sm text-red-400">
+              Failed to load announcements. Please refresh the page.
             </div>
           ) : filtered.length === 0 ? (
             <EmptyState
@@ -324,6 +353,7 @@ export default function AnnouncementsView() {
           entityName="announcement"
           onConfirm={() => deleteMutation.mutate({ id: deleteConfirmId })}
           onCancel={() => setDeleteConfirmId(null)}
+          isPending={deleteMutation.isPending}
         />
       )}
     </div>
