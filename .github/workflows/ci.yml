@@ -58,4 +58,4 @@ jobs:
         run: |
           export $(grep -v '^#' .vercel/.env.preview.local | xargs)
           export DATABASE_URL=$DATABASE_URL/$DB_NAME
-          npx vercel@latest deploy --token=$VERCEL_TOKEN --env DATABASE_URL=$DATABASE_URL
+          npx vercel@latest deploy --token=$VERCEL_TOKEN --build-env DATABASE_URL=$DATABASE_URL --env DATABASE_URL=$DATABASE_URL
