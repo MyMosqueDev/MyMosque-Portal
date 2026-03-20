@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { trpc } from "@/trpc/react";
-import { getCache } from "@/lib/mosque-cache";
+import { getCache, clearCache } from "@/lib/mosque-cache";
 import DashboardHome from "@/components/dashboard/DashboardHome";
 import AnnouncementsView from "@/components/dashboard/AnnouncementsView";
 import EventsView from "@/components/dashboard/EventsView";

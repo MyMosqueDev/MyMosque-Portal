@@ -71,7 +71,7 @@ export default function LoginPage() {
           </p>
 
           {/* Dev mode hint */}
-          {(process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "development") && (
+          {(process.env.VERCEL_ENV !== "production") && (
             <div className="mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
               <span className="font-semibold">Dev mode:</span> Use{" "}
               <code className="font-mono">admin@yopmail.com</code> with any password.
