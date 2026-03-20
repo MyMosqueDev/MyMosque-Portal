@@ -55,7 +55,7 @@ jobs:
 
           # Provision using the default admin database (DIRECT_URL)
           echo "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();" | psql $DIRECT_URL
-          echo "DROP DATABASE IF EXISTS \"$DB_NAME\"" | psql $DIRECT_URL
+          echo "DROP DATABASE IF EXISTS \"$DB_NAME\" WITH (FORCE);" | psql $DIRECT_URL
           echo "CREATE DATABASE \"$DB_NAME\"" | psql $DIRECT_URL
 
           # Assign the cleanly formatted URLs for Prisma
