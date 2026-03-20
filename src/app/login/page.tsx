@@ -42,13 +42,13 @@ export default function LoginPage() {
           <img src="/logo.png" alt="MyMosque" className="h-9 w-9 rounded-lg" />
           <span className="text-xl font-bold text-[#4A4A4A]">MyMosque</span>
         </a>
-        <a
+        {/* <a
           href="#"
           className="text-sm text-gray-400 hover:text-[#4A4A4A] transition-colors"
         >
           Don&apos;t have an account?{" "}
           <span className="text-[#699A51] font-semibold">Sign up</span>
-        </a>
+        </a> */}
       </nav>
 
       {/* Main */}

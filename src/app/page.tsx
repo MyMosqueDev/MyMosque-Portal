@@ -38,22 +38,16 @@ export default function Home() {
             >
               Login
             </a>
-            <a
-              href="#download"
-              className="border border-white/40 text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-white hover:text-[#699A51] transition-all"
-            >
-              Get the App
-            </a>
           </div>
         </nav>
 
         {/* Hero content */}
         <div className="relative z-10 text-center text-white px-6 max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 border border-white/25 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] text-white/80 mb-8 font-semibold">
+          <div className="inline-flex items-center gap-2 border border-white/25 bg-white/10 backdrop-blur-sm px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/80 mb-5 sm:mb-8 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-[#699A51] animate-pulse" />
             Community Platform for Mosques
           </div>
-          <h1 className="text-5xl lg:text-[3.75rem] font-extrabold leading-[1.1] tracking-tight mb-6">
+          <h1 className="text-3xl sm:text-5xl lg:text-[3.75rem] font-extrabold leading-[1.1] tracking-tight mb-4 sm:mb-6">
             Connecting{" "}
             <span className="text-[#699A51] relative inline-block">
               Mosques
@@ -63,14 +57,14 @@ export default function Home() {
             </span>{" "}
             with Their Communities
           </h1>
-          <p className="text-xl lg:text-2xl text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed">
+          <p className="text-base sm:text-xl lg:text-2xl text-white/70 max-w-2xl mx-auto mb-8 sm:mb-12 leading-relaxed">
             MyMosque unifies prayer times, events, and announcements in a single beautiful app for mosques and their communities.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <a href="#download" className="bg-[#699A51] text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-[#5c8846] hover:scale-105 transition-all shadow-2xl shadow-[#699A51]/40">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            <a href="#download" className="bg-[#699A51] text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full font-bold text-base sm:text-lg hover:bg-[#5c8846] hover:scale-105 transition-all shadow-2xl shadow-[#699A51]/40">
               Download Free
             </a>
-            <a href="#about" className="text-white/80 hover:text-white transition-colors flex items-center gap-2 font-medium text-lg">
+            <a href="#about" className="text-white/80 hover:text-white transition-colors flex items-center gap-2 font-medium text-base sm:text-lg">
               Learn more
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

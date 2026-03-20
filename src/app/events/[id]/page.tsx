@@ -63,26 +63,26 @@ export default async function EventPage({
       </nav>
 
       {/* Main content */}
-      <div className="max-w-5xl mx-auto px-6 md:px-14 pb-20 pt-4 md:pt-10">
-        <div className="flex flex-col md:grid md:grid-cols-[1fr_400px] gap-10 md:gap-20 items-start">
+      <div className="max-w-5xl mx-auto px-5 md:px-14 pb-16 md:pb-20 pt-3 md:pt-10">
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_400px] gap-6 md:gap-20 items-start">
 
           {/* ── Left: details ─────────────────────────────── */}
           <div className="order-2 md:order-1">
 
             {/* Title */}
             <h1
-              className="font-black text-gray-950 leading-[1.05] tracking-tight mb-6"
-              style={{ fontSize: "clamp(2.4rem, 6vw, 4rem)" }}
+              className="font-black text-gray-950 leading-[1.05] tracking-tight mb-4 md:mb-6"
+              style={{ fontSize: "clamp(1.75rem, 6vw, 4rem)" }}
             >
               {event.title}
             </h1>
 
             {/* Date & Time */}
-            <div className="mb-7">
-              <p className="text-xl md:text-2xl font-bold text-gray-900">
+            <div className="mb-5 md:mb-7">
+              <p className="text-lg md:text-2xl font-bold text-gray-900">
                 {formatDateLong(event.date)}
               </p>
-              <p className="text-lg text-gray-600 mt-0.5">{formatTime(event.date)}</p>
+              <p className="text-base md:text-lg text-gray-600 mt-0.5">{formatTime(event.date)}</p>
             </div>
 
             {/* Action icon buttons */}
@@ -98,7 +98,7 @@ export default async function EventPage({
 
             {/* Hosted by */}
             {event.host && (
-              <div className="mt-9">
+              <div className="mt-6 md:mt-9">
                 <div className="flex items-center gap-1.5 mb-3">
                   <svg
                     className="w-4 h-4 text-gray-600"
@@ -128,7 +128,7 @@ export default async function EventPage({
 
             {/* Location */}
             {event.location && (
-              <div className="mt-6 flex items-center gap-2.5 text-gray-700">
+              <div className="mt-4 md:mt-6 flex items-center gap-2.5 text-gray-700">
                 <svg
                   className="w-5 h-5 shrink-0 text-gray-500"
                   fill="none"
@@ -153,17 +153,14 @@ export default async function EventPage({
             )}
 
             {/* Description */}
-            <p className="mt-7 text-gray-700 text-base leading-relaxed" style={{ maxWidth: "42ch" }}>
+            <p className="mt-5 md:mt-7 text-gray-700 text-sm md:text-base leading-relaxed" style={{ maxWidth: "42ch" }}>
               {event.description}
             </p>
           </div>
 
           {/* ── Right: image ──────────────────────────────── */}
           <div className="order-1 md:order-2 w-full">
-            <div
-              className="w-full rounded-3xl overflow-hidden shadow-2xl"
-              style={{ aspectRatio: "1 / 1" }}
-            >
+            <div className="w-full aspect-[4/3] md:aspect-square rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
               <EventImage src={event.image} alt={event.title} />
             </div>
           </div>

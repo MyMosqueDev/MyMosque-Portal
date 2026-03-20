@@ -50,7 +50,6 @@ export default function AnnouncementsView() {
 
   // Write fresh data back to cache
   useEffect(() => {
-    console.log("announcements", announcements);
     if (announcements.length) setCache({ announcements });
   }, [announcements]);
 

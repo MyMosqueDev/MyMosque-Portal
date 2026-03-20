@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { trpc } from "@/trpc/react";
-import { getCache, clearCache } from "@/lib/mosque-cache";
+import { getCache } from "@/lib/mosque-cache";
 import DashboardHome from "@/components/dashboard/DashboardHome";
 import AnnouncementsView from "@/components/dashboard/AnnouncementsView";
 import EventsView from "@/components/dashboard/EventsView";
@@ -19,50 +19,23 @@ const navItems: { label: string; view: View | null }[] = [
   { label: "Prayer Times",  view: "prayer-times"  },
 ];
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [view, setView] = useState<View>("dashboard");
-  const utils = trpc.useUtils();
-  const hasShownUpdate = useRef(false);
+const VALID_VIEWS: View[] = ["dashboard", "announcements", "events", "prayer-times"];
 
+function DashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialView = searchParams.get("view") as View | null;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [view, setView] = useState<View>(
+    initialView && VALID_VIEWS.includes(initialView) ? initialView : "dashboard"
+  );
+  const utils = trpc.useUtils();
   const cached = getCache();
   const mosque = trpc.mosque.getMe.useQuery(undefined, {
     initialData: cached?.mosque ?? undefined,
     initialDataUpdatedAt: cached?.fetchedAt,
   });
 
-  // Background sync: on tab switch, check if server data is newer than local cache
-  useEffect(() => {
-    if (hasShownUpdate.current) return;
-    console.log("Background sync: checking for updates");
-
-    (utils.mosque.getMe.fetch() as Promise<any>).then((fresh: any) => {
-      const cached = getCache();
-      if (!cached?.mosque || !fresh) return;
-
-      const isStale =
-        fresh.lastAnnouncement?.toString() !== cached.mosque.lastAnnouncement ||
-        fresh.lastEvent?.toString()        !== cached.mosque.lastEvent ||
-        fresh.lastPrayerTime?.toString()   !== cached.mosque.lastPrayerTime;
-
-      if (isStale) {
-        hasShownUpdate.current = true;
-        toast("Updates available", {
-          position: "bottom-right",
-          duration: Infinity,
-          action: {
-            label: "Refresh",
-            onClick: () => {
-              clearCache();
-              window.location.reload();
-            },
-          },
-        });
-      }
-    }).catch(() => {
-    });
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -78,6 +51,8 @@ export default function DashboardPage() {
   function navigate(v: View) {
     setView(v);
     setSidebarOpen(false);
+    const url = v === "dashboard" ? "/dashboard" : `/dashboard?view=${v}`;
+    router.replace(url, { scroll: false });
   }
 
   return (
@@ -199,5 +174,13 @@ export default function DashboardPage() {
         {view === "prayer-times"  && <PrayerTimesView />}
       </main>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardContent />
+    </Suspense>
   );
 }
