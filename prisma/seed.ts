@@ -69,7 +69,7 @@ async function main() {
           sendNotifications: true
         }
       },
-      uid: "test-uid-1",
+      uid: "test-uid-2",
       email: "info@nuecesmosque.com",
       contactInfo: {
         phone: "817-751-6404",

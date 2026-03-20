@@ -36,6 +36,14 @@ jobs:
       - name: Pull Vercel Environment Variables
         run: npx vercel@latest pull --yes --environment=preview --token=$VERCEL_TOKEN
 
+      - name: Debug Vercel Env Vars
+        run: |
+          set -a; source .vercel/.env.preview.local; set +a
+          echo "DATABASE_URL from Vercel pull: $DATABASE_URL"
+          echo "First 30 chars: ${DATABASE_URL:0:30}"
+          echo "DIRECT_URL from Vercel pull: $DIRECT_URL"
+          echo "First 30 chars: ${DIRECT_URL:0:30}"
+
       - name: Provision Branch Database & Run Migrations
         run: |
           # Load variables
@@ -54,8 +62,8 @@ jobs:
           export DATABASE_URL="$BASE_DATABASE_URL/$DB_NAME"
           export DIRECT_URL="$BASE_DIRECT_URL/$DB_NAME"
 
-          npx prisma migrate reset --force
           npx prisma generate
+          npx prisma migrate reset
           npx prisma db seed
 
       - name: Deploy to Vercel Preview
