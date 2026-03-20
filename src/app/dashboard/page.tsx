@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { trpc } from "@/trpc/react";
@@ -24,11 +24,10 @@ const VALID_VIEWS: View[] = ["dashboard", "announcements", "events", "prayer-tim
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialView = searchParams.get("view") as View | null;
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [view, setView] = useState<View>(
-    initialView && VALID_VIEWS.includes(initialView) ? initialView : "dashboard"
-  );
+  const rawView = searchParams.get("view") as View | null;
+  const view: View = rawView && VALID_VIEWS.includes(rawView) ? rawView : "dashboard";
+  const pendingCreate = useRef(false);
   const utils = trpc.useUtils();
   const cached = getCache();
   const mosque = trpc.mosque.getMe.useQuery(undefined, {
@@ -48,11 +47,11 @@ function DashboardContent() {
     toast.success("Synced", { duration: 2000 });
   }
 
-  function navigate(v: View) {
-    setView(v);
+  function navigate(v: View, opts?: { create?: boolean }) {
     setSidebarOpen(false);
+    pendingCreate.current = opts?.create ?? false;
     const url = v === "dashboard" ? "/dashboard" : `/dashboard?view=${v}`;
-    router.replace(url, { scroll: false });
+    router.push(url, { scroll: false });
   }
 
   return (
@@ -157,20 +156,13 @@ function DashboardContent() {
             <img src="/logo.png" alt="MyMosque" className="h-6 w-6 rounded-lg" />
             <span className="text-sm font-bold text-mosque-text">MyMosque</span>
           </div>
-          {view === "dashboard" ? (
-            <div className="flex items-center gap-1.5 bg-mosque-purple text-white px-3 py-1.5 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span className="text-xs font-bold">Asr</span>
-            </div>
-          ) : (
-            <div className="w-9" />
-          )}
+          <div className="w-9" />
         </div>
 
         {/* VIEW CONTENT */}
-        {view === "dashboard"     && <DashboardHome />}
-        {view === "announcements" && <AnnouncementsView />}
-        {view === "events"        && <EventsView />}
+        {view === "dashboard"     && <DashboardHome onNavigate={navigate} />}
+        {view === "announcements" && <AnnouncementsView autoCreate={pendingCreate.current} />}
+        {view === "events"        && <EventsView autoCreate={pendingCreate.current} />}
         {view === "prayer-times"  && <PrayerTimesView />}
       </main>
     </div>

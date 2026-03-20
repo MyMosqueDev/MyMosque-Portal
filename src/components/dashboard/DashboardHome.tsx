@@ -62,7 +62,9 @@ function asPrayerEntries(record: any): PrayerEntry[] | null | undefined {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function DashboardHome() {
+type View = "dashboard" | "announcements" | "events" | "prayer-times";
+
+export default function DashboardHome({ onNavigate }: { onNavigate: (view: View, opts?: { create?: boolean }) => void }) {
   const monthYear = getCurrentMonthYear();
   const cached = getCache();
 
@@ -212,18 +214,26 @@ export default function DashboardHome() {
         </div>
 
         {/* ── MOBILE GREETING ── */}
-        <div className="lg:hidden">
-          <h1 className="text-lg font-extrabold text-mosque-text">
-            Welcome back, {mosqueName}
-          </h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
+        <div className="lg:hidden flex items-start justify-between">
+          <div>
+            <h1 className="text-lg font-extrabold text-mosque-text">
+              Welcome back, {mosqueName}
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+          {nextPrayer && (
+            <div className="flex items-center gap-1.5 bg-mosque-purple text-white px-3 py-1.5 rounded-full shrink-0 ml-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-xs font-bold">{nextPrayer.name} · {nextPrayer.time}</span>
+            </div>
+          )}
         </div>
 
         {/* ── STAT TILES ── */}
@@ -296,89 +306,138 @@ export default function DashboardHome() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_290px] gap-4 lg:gap-6">
 
           {/* Events card */}
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-mosque-blue px-5 py-3 flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-white/80">
                 Upcoming Events
-              </h2>
-              <span className="text-xs font-semibold text-mosque-blue bg-mosque-blue/10 px-2.5 py-1 rounded-full">
-                {upcomingEvents.length} total
-              </span>
+              </p>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => onNavigate("events")}
+                  className="text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                >
+                  View All
+                </button>
+                <div className="w-px h-3 bg-white/30" />
+                <button
+                  onClick={() => onNavigate("events", { create: true })}
+                  className="flex items-center gap-1 text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New
+                </button>
+              </div>
             </div>
 
-            {upcomingDisplay.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">
-                No upcoming events.
-              </p>
-            ) : (
-              <>
-                {/* Desktop */}
-                <div className="hidden sm:flex flex-col gap-2">
-                  {upcomingDisplay.map((e) => (
-                    <Link
-                      key={e.id}
-                      href={`/events/${e.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 hover:bg-mosque-blue/5 rounded-xl px-3 py-3 cursor-pointer transition-colors group"
-                    >
-                      <div className="shrink-0 w-11 h-11 rounded-xl bg-mosque-blue/10 flex flex-col items-center justify-center">
-                        <span className="text-[9px] font-bold text-mosque-blue uppercase leading-none">
-                          {formatEventDate(e.date).split(" ")[0]}
-                        </span>
-                        <span className="text-base font-extrabold text-mosque-blue leading-none">
-                          {formatEventDate(e.date).split(" ")[1]}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-mosque-text group-hover:text-mosque-blue transition-colors">
+            <div className="p-5">
+              {upcomingDisplay.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4 text-center">
+                  No upcoming events.
+                </p>
+              ) : (
+                <>
+                  {/* Desktop */}
+                  <div className="hidden sm:flex flex-col gap-2">
+                    {upcomingDisplay.map((e) => (
+                      <Link
+                        key={e.id}
+                        href={`/events/${e.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-4 hover:bg-mosque-blue/5 rounded-xl px-3 py-3 cursor-pointer transition-colors group"
+                      >
+                        <div className="shrink-0 w-11 h-11 rounded-xl bg-mosque-blue/10 flex flex-col items-center justify-center">
+                          <span className="text-[9px] font-bold text-mosque-blue uppercase leading-none">
+                            {formatEventDate(e.date).split(" ")[0]}
+                          </span>
+                          <span className="text-base font-extrabold text-mosque-blue leading-none">
+                            {formatEventDate(e.date).split(" ")[1]}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-mosque-text group-hover:text-mosque-blue transition-colors">
+                            {e.title}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {formatEventTime(e.date)} · {e.location}
+                          </p>
+                        </div>
+                        <svg
+                          className="w-3.5 h-3.5 text-gray-300 group-hover:text-mosque-blue transition-colors shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </Link>
+                    ))}
+                  </div>
+                  {/* Mobile */}
+                  <div className="grid grid-cols-2 gap-2 sm:hidden">
+                    {upcomingDisplay.map((e) => (
+                      <Link
+                        key={e.id}
+                        href={`/events/${e.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-mosque-blue/5 rounded-xl p-3 cursor-pointer hover:bg-mosque-blue/10 transition-colors relative"
+                      >
+                        <svg
+                          className="absolute top-2.5 right-2.5 w-3 h-3 text-mosque-blue/40"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        <p className="text-xs font-bold text-mosque-blue">
+                          {formatEventDate(e.date)}
+                        </p>
+                        <p className="text-sm font-semibold text-mosque-text mt-1 leading-tight pr-4">
                           {e.title}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {formatEventTime(e.date)} · {e.location}
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          {formatEventTime(e.date)}
                         </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                {/* Mobile */}
-                <div className="grid grid-cols-2 gap-2 sm:hidden">
-                  {upcomingDisplay.map((e) => (
-                    <Link
-                      key={e.id}
-                      href={`/events/${e.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-mosque-blue/5 rounded-xl p-3 cursor-pointer hover:bg-mosque-blue/10 transition-colors"
-                    >
-                      <p className="text-xs font-bold text-mosque-blue">
-                        {formatEventDate(e.date)}
-                      </p>
-                      <p className="text-sm font-semibold text-mosque-text mt-1 leading-tight">
-                        {e.title}
-                      </p>
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        {formatEventTime(e.date)}
-                      </p>
-                      <p className="text-[10px] text-gray-400">{e.location}</p>
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
+                        <p className="text-[10px] text-gray-400">{e.location}</p>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Announcements card */}
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-mosque-green px-5 py-3 flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-white/80">
                 Announcements
-              </h2>
-              <span className="text-xs font-semibold text-mosque-green bg-mosque-green/10 px-2.5 py-1 rounded-full">
-                {announcementCount} total
-              </span>
+              </p>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => onNavigate("announcements")}
+                  className="text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                >
+                  View All
+                </button>
+                <div className="w-px h-3 bg-white/30" />
+                <button
+                  onClick={() => onNavigate("announcements", { create: true })}
+                  className="flex items-center gap-1 text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New
+                </button>
+              </div>
             </div>
 
+            <div className="p-5">
             {recentAnnouncements.length === 0 ? (
               <p className="text-sm text-gray-400 py-4 text-center">
                 No announcements.
@@ -432,6 +491,7 @@ export default function DashboardHome() {
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
       </div>

@@ -52,9 +52,9 @@ function isUpcoming(date: Date | string) {
   return new Date(date) >= today;
 }
 
-export default function EventsView() {
+export default function EventsView({ autoCreate = false }: { autoCreate?: boolean }) {
   const [activeFilter, setActiveFilter]       = useState<FilterTab>("all");
-  const [showInlineForm, setShowInlineForm]   = useState(false);
+  const [showInlineForm, setShowInlineForm]   = useState(autoCreate);
   const [editingId, setEditingId]             = useState<number | null>(null);
   const [form, setForm]                       = useState(emptyForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
