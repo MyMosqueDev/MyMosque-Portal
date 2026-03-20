@@ -6,44 +6,11 @@ const adapter = new PrismaPg({ connectionString: process.env.DIRECT_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const prayerSettings = {
-    schedule: {
-      timeMode: {
-        asr: "static",
-        fajr: "increment",
-        isha: "static",
-        dhuhr: "static",
-        maghrib: "increment"
-      },
-      prayerTimes: {
-        asr: "18:15",
-        fajr: "19:39",
-        isha: "21:00",
-        dhuhr: "14:00",
-        maghrib: "20:40"
-      },
-      incrementValues: {
-        asr: 0,
-        fajr: 15,
-        isha: 0,
-        dhuhr: 0,
-        maghrib: 5
-      }
-    },
-    settings: {
-      hanafiAsr: false,
-      autoUpdate: true,
-      adjustForDST: true,
-      calculationMethod: "ISNA",
-      sendNotifications: true
-    }
-  };
-
   await prisma.mosque.upsert({
     where: {
       id: 1,
     },
-    update: { prayerSettings },
+    update: {},
     create: {
       name: "Nueces Mosque",
       address: "1906 Nueces St, Austin, TX 78701",
