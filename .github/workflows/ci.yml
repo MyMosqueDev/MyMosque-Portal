@@ -54,7 +54,7 @@ jobs:
           export DATABASE_URL="$BASE_DATABASE_URL/$DB_NAME"
           export DIRECT_URL="$BASE_DIRECT_URL/$DB_NAME"
 
-          npx prisma migrate reset
+          npx prisma migrate reset --force
           npx prisma generate
           npx prisma db seed
 
