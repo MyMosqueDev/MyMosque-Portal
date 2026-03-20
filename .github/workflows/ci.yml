@@ -63,7 +63,7 @@ jobs:
           export DIRECT_URL="$BASE_DIRECT_URL/$DB_NAME"
 
           npx prisma generate
-          npx prisma migrate reset
+          npx prisma migrate deploy
           npx prisma db seed
 
       - name: Deploy to Vercel Preview
