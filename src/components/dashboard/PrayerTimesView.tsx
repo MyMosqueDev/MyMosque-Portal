@@ -31,6 +31,8 @@ const CALC_METHODS = [
   "Muslim World League", "Egyptian Authority",
   "Makkah (Umm Al-Qura)", "Karachi", "Tehran", "Jafari",
 ];
+// Maps CALC_METHODS index → calculationMethod string stored in prayerSettings
+const CALC_METHOD_KEYS = ["ISNA", "MWL", "Egyptian", "Makkah", "Karachi", "Tehran", "Jafari"];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function asPrayerDays(record: any): PrayerDayEntry[] | null | undefined {
@@ -38,7 +40,7 @@ function asPrayerDays(record: any): PrayerDayEntry[] | null | undefined {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function asJummahTimes(mosqueData: any): { athan: string; iqama: string }[] | null {
+function asJummahTimes(mosqueData: any): { athanTime: string; iqamaTime: string }[] | null {
   return mosqueData?.jummahTimes ?? null;
 }
 
@@ -76,6 +78,9 @@ const DEFAULT_PRAYERS: PrayerMap = {
 export default function PrayerTimesView() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [visiblePrayers, setVisiblePrayers] = useState<Set<string>>(
+    new Set(["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"])
+  );
 
   const [prayers, setPrayers] = useState<PrayerMap>(DEFAULT_PRAYERS);
   const [jummah, setJummah] = useState<JummahEntry[]>([]);
@@ -102,6 +107,7 @@ export default function PrayerTimesView() {
       initialDataUpdatedAt: cached?.fetchedAt,
     }
   );
+  const adhanCalendar = trpc.mosque.getAdhanCalendar.useQuery({ monthYear });
   const isGetMeError = mosque.isError;
   const isPrayerTimesError = prayerTimesRecord.isError;
 
@@ -109,7 +115,11 @@ export default function PrayerTimesView() {
     onSuccess: () => utils.mosque.getMe.invalidate(),
   });
 
-  const savePrayerTimesMutation = trpc.mosque.savePrayerTimes.useMutation({
+  const updatePrayerSettingsMutation = trpc.mosque.updatePrayerSettings.useMutation({
+    onSuccess: () => utils.mosque.getMe.invalidate(),
+  });
+
+  const generatePrayerTimesMutation = trpc.mosque.generatePrayerTimes.useMutation({
     onSuccess: () => utils.mosque.getPrayerTimes.invalidate({ monthYear }),
   });
 
@@ -124,18 +134,35 @@ export default function PrayerTimesView() {
     }
   }, [prayerTimesRecord.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Initialize jummah from mosque data
+  // Initialize jummah + prayer settings from mosque data
   useEffect(() => {
     const times = asJummahTimes(mosque.data);
     if (times) {
-      setJummah(times.map((t) => ({ athanTime: t.athan ?? "", iqamaTime: t.iqama ?? "" })));
+      setJummah(times.map((t) => ({ athanTime: t.athanTime ?? "", iqamaTime: t.iqamaTime ?? "" })));
     }
     const coords = asCoordinates(mosque.data);
     if (coords) {
       setLat(String(coords.lat ?? "30.2672"));
       setLng(String(coords.lng ?? "-97.7431"));
     }
-  }, [mosque.data]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ps = (mosque.data as any)?.prayerSettings;
+    if (ps?.schedule) {
+      const { timeMode, prayerTimes: pt, incrementValues } = ps.schedule;
+      setPrayers({
+        Fajr:    { mode: timeMode?.fajr    ?? "static", staticTime: pt?.fajr    ?? "06:30", incrementMinutes: incrementValues?.fajr    ?? 0 },
+        Dhuhr:   { mode: timeMode?.dhuhr   ?? "static", staticTime: pt?.dhuhr   ?? "13:30", incrementMinutes: incrementValues?.dhuhr   ?? 10 },
+        Asr:     { mode: timeMode?.asr     ?? "static", staticTime: pt?.asr     ?? "16:30", incrementMinutes: incrementValues?.asr     ?? 0 },
+        Maghrib: { mode: timeMode?.maghrib ?? "static", staticTime: pt?.maghrib ?? "19:35", incrementMinutes: incrementValues?.maghrib ?? 15 },
+        Isha:    { mode: timeMode?.isha    ?? "static", staticTime: pt?.isha    ?? "21:00", incrementMinutes: incrementValues?.isha    ?? 0 },
+      });
+    }
+    if (ps?.settings) {
+      setHanafiAsr(ps.settings.hanafiAsr ?? false);
+      const methodIdx = CALC_METHOD_KEYS.indexOf(ps.settings.calculationMethod);
+      if (methodIdx >= 0) setCalcMethod(methodIdx);
+    }
+  }, [mosque.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prayerDays = asPrayerDays(prayerTimesRecord.data);
 
@@ -152,14 +179,42 @@ export default function PrayerTimesView() {
   async function handleSave() {
     setSaving(true);
     try {
-      // Save jummah times
+      // 1. Save jummah times
       await updateJummahMutation.mutateAsync(
         jummah.map((j) => ({ athanTime: j.athanTime, iqamaTime: j.iqamaTime }))
       );
-      // If we have prayer times data, re-save it (persists any edits made externally)
-      if (prayerDays) {
-        await savePrayerTimesMutation.mutateAsync({ monthYear, prayerTimes: prayerDays });
-      }
+      // 2. Persist iqama schedule + settings
+      await updatePrayerSettingsMutation.mutateAsync({
+        schedule: {
+          timeMode: {
+            fajr:    prayers.Fajr.mode,
+            dhuhr:   prayers.Dhuhr.mode,
+            asr:     prayers.Asr.mode,
+            maghrib: prayers.Maghrib.mode,
+            isha:    prayers.Isha.mode,
+          },
+          prayerTimes: {
+            fajr:    prayers.Fajr.staticTime,
+            dhuhr:   prayers.Dhuhr.staticTime,
+            asr:     prayers.Asr.staticTime,
+            maghrib: prayers.Maghrib.staticTime,
+            isha:    prayers.Isha.staticTime,
+          },
+          incrementValues: {
+            fajr:    prayers.Fajr.incrementMinutes,
+            dhuhr:   prayers.Dhuhr.incrementMinutes,
+            asr:     prayers.Asr.incrementMinutes,
+            maghrib: prayers.Maghrib.incrementMinutes,
+            isha:    prayers.Isha.incrementMinutes,
+          },
+        },
+        settings: {
+          hanafiAsr,
+          calculationMethod: CALC_METHOD_KEYS[calcMethod] ?? "ISNA",
+        },
+      });
+      // 3. Fetch adhan times from aladhan + apply iqama rules → upsert PrayerTime
+      await generatePrayerTimesMutation.mutateAsync({ monthYear });
       setSaved(true);
       toast.success("Prayer times saved");
       setTimeout(() => setSaved(false), 2000);
@@ -349,30 +404,33 @@ export default function PrayerTimesView() {
 
             {/* Location Information */}
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <p className="text-sm font-bold text-mosque-text">Location Information</p>
-                <p className="text-xs text-gray-400 mt-0.5">Used for accurate prayer time calculations</p>
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-mosque-text">Location Information</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Used for accurate prayer time calculations</p>
+                </div>
+                <span className="text-xs text-gray-400 italic">Contact admin to change</span>
               </div>
               <div className="px-5 py-4 grid grid-cols-2 gap-3">
                 <div>
                   <label className={`${labelCls} block mb-1.5`}>Latitude</label>
-                  <input value={lat} onChange={e => setLat(e.target.value)} className={inputCls} placeholder="30.2672" />
+                  <input value={lat} readOnly className={`${inputCls} bg-gray-50 cursor-not-allowed text-gray-500`} placeholder="30.2672" />
                 </div>
                 <div>
                   <label className={`${labelCls} block mb-1.5`}>Longitude</label>
-                  <input value={lng} onChange={e => setLng(e.target.value)} className={inputCls} placeholder="-97.7431" />
+                  <input value={lng} readOnly className={`${inputCls} bg-gray-50 cursor-not-allowed text-gray-500`} placeholder="-97.7431" />
                 </div>
                 <div>
                   <label className={`${labelCls} block mb-1.5`}>City</label>
-                  <input value={city} onChange={e => setCity(e.target.value)} className={inputCls} placeholder="Austin" />
+                  <input value={city} readOnly className={`${inputCls} bg-gray-50 cursor-not-allowed text-gray-500`} placeholder="Austin" />
                 </div>
                 <div>
                   <label className={`${labelCls} block mb-1.5`}>Country</label>
-                  <input value={country} onChange={e => setCountry(e.target.value)} className={inputCls} placeholder="USA" />
+                  <input value={country} readOnly className={`${inputCls} bg-gray-50 cursor-not-allowed text-gray-500`} placeholder="USA" />
                 </div>
                 <div className="col-span-2">
                   <label className={`${labelCls} block mb-1.5`}>Timezone</label>
-                  <input value={timezone} onChange={e => setTimezone(e.target.value)} className={inputCls} placeholder="America/Chicago" />
+                  <input value={timezone} readOnly className={`${inputCls} bg-gray-50 cursor-not-allowed text-gray-500`} placeholder="America/Chicago" />
                 </div>
               </div>
             </div>
@@ -387,54 +445,81 @@ export default function PrayerTimesView() {
                 <p className="text-sm font-bold text-mosque-text">Monthly Prayer Times</p>
                 <span className="text-xs font-semibold text-mosque-purple">{getMonthLabel()}</span>
               </div>
-              <div className="overflow-x-auto" style={{ maxHeight: 320, overflowY: "auto" }}>
-                {prayerTimesRecord.isLoading ? (
+              {/* Prayer filter pills */}
+              <div className="px-4 py-2.5 border-b border-gray-100 flex flex-wrap gap-1.5">
+                {[
+                  { label: "Fajr",    color: "#516D9A" },
+                  { label: "Sunrise", color: "#9CA3AF" },
+                  { label: "Dhuhr",   color: "#699A51" },
+                  { label: "Asr",     color: "#699A51" },
+                  { label: "Maghrib", color: "#67519A" },
+                  { label: "Isha",    color: "#516D9A" },
+                ].map(({ label, color }) => {
+                  const active = visiblePrayers.has(label);
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => setVisiblePrayers(prev => {
+                        const next = new Set(prev);
+                        next.has(label) ? next.delete(label) : next.add(label);
+                        return next;
+                      })}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all"
+                      style={active
+                        ? { backgroundColor: color + "18", color, borderColor: color + "40" }
+                        : { backgroundColor: "transparent", color: "#9CA3AF", borderColor: "#E5E7EB" }
+                      }
+                    >
+                      {active && (
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="currentColor">
+                          <circle cx="5" cy="5" r="4" />
+                        </svg>
+                      )}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ maxHeight: 380, overflowY: "auto" }}>
+                {adhanCalendar.isLoading ? (
                   <div className="px-5 py-8 text-center text-sm text-gray-400">Loading…</div>
-                ) : isPrayerTimesError ? (
-                  <div className="px-5 py-8 text-center text-sm text-red-400">
-                    Failed to load prayer times.
-                  </div>
-                ) : !prayerDays ? (
-                  <div className="px-5 py-8 text-center text-sm text-gray-400">
-                    No prayer times for this month.
-                  </div>
+                ) : adhanCalendar.isError ? (
+                  <div className="px-5 py-8 text-center text-sm text-red-400">Failed to load prayer times.</div>
+                ) : !adhanCalendar.data?.length ? (
+                  <div className="px-5 py-8 text-center text-sm text-gray-400">No prayer times for this month.</div>
                 ) : (
-                  <table className="w-full text-xs min-w-[280px]">
-                    <thead className="sticky top-0 bg-white">
-                      <tr className="border-b border-gray-100">
-                        <th className="px-4 py-2.5 text-left font-semibold text-gray-400 w-9">Day</th>
-                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Fajr</th>
-                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Dhuhr</th>
-                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Asr</th>
-                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Maghrib</th>
-                        <th className="px-2 py-2.5 text-right font-semibold text-gray-400">Isha</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {prayerDays.map(row => (
-                        <tr key={row.day} className="border-t border-gray-50 hover:bg-gray-50/60 transition-colors">
-                          <td className="px-4 py-2 font-bold text-gray-500 tabular-nums">
-                            {row.day}
-                          </td>
-                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
-                            {row.times.fajr.adhan}
-                          </td>
-                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
-                            {row.times.dhuhr.adhan}
-                          </td>
-                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
-                            {row.times.asr.adhan}
-                          </td>
-                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
-                            {row.times.maghrib.adhan}
-                          </td>
-                          <td className="px-2 py-2 text-right text-gray-600 tabular-nums">
-                            {row.times.isha.adhan}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="divide-y divide-gray-50">
+                    {adhanCalendar.data.map(row => {
+                      const rows = [
+                        { label: "Fajr",    time: row.timings.fajr    },
+                        { label: "Sunrise", time: row.timings.sunrise  },
+                        { label: "Dhuhr",   time: row.timings.dhuhr   },
+                        { label: "Asr",     time: row.timings.asr     },
+                        { label: "Maghrib", time: row.timings.maghrib  },
+                        { label: "Isha",    time: row.timings.isha    },
+                      ];
+                      return (
+                        <div key={row.day} className="flex gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors">
+                          <div className="w-7 shrink-0 pt-px">
+                            <span className="text-xs font-bold text-mosque-purple tabular-nums">
+                              {parseInt(row.day)}
+                            </span>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            {rows.map(p => {
+                              const active = visiblePrayers.has(p.label);
+                              return (
+                                <div key={p.label} className="flex items-center justify-between">
+                                  <span className={`text-[10px] font-medium w-12 transition-colors ${active ? "text-gray-400" : "text-gray-200"}`}>{p.label}</span>
+                                  <span className={`text-[10px] font-semibold tabular-nums transition-colors ${active ? "text-gray-600" : "text-gray-200"}`}>{p.time}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>

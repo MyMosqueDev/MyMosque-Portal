@@ -1,6 +1,7 @@
 import { router, authedProcedure, publicProcedure } from "../trpc";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { generateMonthPrayerTimes, fetchAladhanCalendar } from "@/lib/prayer-times";
 
 const SeveritySchema = z.enum(["low", "medium", "high"]);
 
@@ -173,6 +174,90 @@ export const mosqueRouter = router({
         where: { id: ctx.mosqueId },
         data: { lastEvent: new Date() },
       });
+      return result;
+    }),
+
+  getAdhanCalendar: authedProcedure
+    .input(z.object({ monthYear: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const mosque = await db.mosque.findUnique({ where: { id: ctx.mosqueId } });
+      if (!mosque) throw new Error("Mosque not found");
+
+      const ref = input.monthYear
+        ? (() => {
+            const [mm, yy] = input.monthYear.split("-").map(Number);
+            return { month: mm, year: 2000 + yy };
+          })()
+        : { month: new Date().getMonth() + 1, year: new Date().getFullYear() };
+
+      const ps = (mosque.prayerSettings as any)?.settings ?? {};
+
+      return fetchAladhanCalendar(
+        mosque.address,
+        ref.year,
+        ref.month,
+        ps.calculationMethod ?? "ISNA",
+        ps.hanafiAsr ?? false
+      );
+    }),
+
+  updatePrayerSettings: authedProcedure
+    .input(
+      z.object({
+        schedule: z.object({
+          timeMode: z.record(z.string(), z.enum(["static", "increment"])),
+          prayerTimes: z.record(z.string(), z.string()),
+          incrementValues: z.record(z.string(), z.number()),
+        }),
+        settings: z.object({
+          hanafiAsr: z.boolean(),
+          calculationMethod: z.string(),
+          autoUpdate: z.boolean().optional(),
+          adjustForDST: z.boolean().optional(),
+          sendNotifications: z.boolean().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { prayerSettings: input as any },
+      });
+    }),
+
+  generatePrayerTimes: authedProcedure
+    .input(z.object({ monthYear: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const mosque = await db.mosque.findUnique({ where: { id: ctx.mosqueId } });
+      if (!mosque) throw new Error("Mosque not found");
+      const prayerTimes = await generateMonthPrayerTimes(mosque, input.monthYear);
+
+      const mmYy = input.monthYear ?? (() => {
+        const d = new Date();
+        return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getFullYear()).slice(2)}`;
+      })();
+
+      const existing = await db.prayerTime.findFirst({
+        where: { mosqueId: ctx.mosqueId, mmYy },
+      });
+
+      let result;
+      if (existing) {
+        result = await db.prayerTime.update({
+          where: { id: existing.id },
+          data: { prayerTimes: prayerTimes as any },
+        });
+      } else {
+        result = await db.prayerTime.create({
+          data: { mosqueId: ctx.mosqueId, mmYy, prayerTimes: prayerTimes as any },
+        });
+      }
+
+      await db.mosque.update({
+        where: { id: ctx.mosqueId },
+        data: { lastPrayerTime: new Date() },
+      });
+
       return result;
     }),
 

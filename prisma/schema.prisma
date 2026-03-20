@@ -26,6 +26,7 @@ model Mosque {
   lastPrayerTime   DateTime
   coordinates      Json
   jummahTimes      Json
+  prayerSettings   Json
   uid              String
   email            String
   contactInfo      Json
